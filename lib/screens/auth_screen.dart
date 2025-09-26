@@ -70,7 +70,9 @@ class _AuthScreenState extends State<AuthScreen> {
             padding: const EdgeInsets.all(24.0),
             child: Card(
               elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
                 child: Row(
@@ -98,7 +100,9 @@ class _AuthScreenState extends State<AuthScreen> {
                             const SizedBox(height: 6),
                             Text(
                               'Plan. Prepare. Prevail.',
-                              style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.grey[600],
+                              ),
                             ),
                           ],
                         ),
@@ -113,7 +117,9 @@ class _AuthScreenState extends State<AuthScreen> {
                             const SizedBox(height: 18),
                             Text(
                               _isSignUp ? 'Create account' : 'Welcome back',
-                              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             const SizedBox(height: 18),
                             TextFormField(
@@ -159,7 +165,10 @@ class _AuthScreenState extends State<AuthScreen> {
                                     ? const SizedBox(
                                         width: 18,
                                         height: 18,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
                                       )
                                     : Text(_isSignUp ? 'Sign Up' : 'Sign In'),
                               ),
