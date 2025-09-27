@@ -71,7 +71,7 @@
         .rating .star{ width:14px; height:14px; fill:var(--brand); flex:0 0 14px }
         @media (max-width:900px){ .hero{ grid-template-columns:1fr } }
     </style>
-    <script defer src="script.js"></script>
+    
     <script>
         // Smooth scroll for in-page links
         document.addEventListener('DOMContentLoaded', () => {
@@ -249,12 +249,8 @@
         if(playHref && playHref!=='#') {
             playBtnEl.href=playHref;
         } else {
-            // No Play link yet — show a Coming Soon badge and disable the button
-            playBtnEl.classList.add('disabled');
-            const soon=document.createElement('span');
-            soon.className='badge-soon';
-            soon.textContent='Coming Soon';
-            playBtnEl.appendChild(soon);
+            // No Play link yet — hide the button instead of showing a Coming Soon badge
+            playBtnEl?.remove();
         }
         if(appHref && appHref!=='#') document.getElementById('appBtn').href=appHref;
         if(discordHref && discordHref!=='#') {
