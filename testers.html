@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SVS Tester Application</title>
+  <link rel="icon" type="image/png" href="web/assets/icon_logo.png">
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body{ background:linear-gradient(145deg,#0f172a 0%,#111827 50%,#1f2937 100%); color:#e5e7eb }
+    .wrap{ max-width:900px; margin:40px auto; padding:0 20px }
+    .card{ background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:18px }
+    .row{ display:grid; grid-template-columns:1fr 1fr; gap:12px }
+    label{ font-size:14px; color:#b7c0ce }
+    input, textarea, select{ width:100%; padding:12px 14px; border-radius:10px; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.06); color:#e5e7eb }
+    textarea{ min-height:120px }
+    .submit{ margin-top:14px; padding:12px 16px; border-radius:12px; background:#5b8cff; color:white; border:1px solid rgba(0,0,0,.2) }
+    a.btn{ padding:10px 14px; border:1px solid rgba(255,255,255,.12); border-radius:10px; margin-right:10px; display:inline-block }
+    .muted{ color:#9aa6b2 }
+  </style>
+  <script>
+    document.addEventListener('DOMContentLoaded',()=>{
+      const form=document.getElementById('testerForm');
+      form.addEventListener('submit', (e)=>{
+        e.preventDefault();
+        const data=Object.fromEntries(new FormData(form).entries());
+        console.log('Tester application submitted', data);
+        alert('Thanks! Your tester application has been received.');
+        form.reset();
+      });
+    });
+  </script>
+</head>
+<body>
+  <div class="wrap">
+    <p><a class="btn" href="index.html">← Back to Home</a></p>
+    <h1>Tester Application</h1>
+    <p class="muted">Apply to try SVS for free and help shape the roadmap. We’ll reach out if selected.</p>
+
+    <form id="testerForm" class="card">
+      <div class="row">
+        <div>
+          <label for="name">Full name</label>
+          <input id="name" name="name" placeholder="Jane Doe" required />
+        </div>
+        <div>
+          <label for="email">Email</label>
+          <input id="email" type="email" name="email" placeholder="jane@example.com" required />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="platform">Platform</label>
+          <select id="platform" name="platform" required>
+            <option value="Android">Android</option>
+            <option value="iOS">iOS</option>
+            <option value="Both">Both</option>
+          </select>
+        </div>
+        <div>
+          <label for="experience">Prep experience level</label>
+          <select id="experience" name="experience" required>
+            <option value="Beginner">Beginner</option>
+            <option value="Intermediate">Intermediate</option>
+            <option value="Advanced">Advanced</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label for="notes">Why do you want to test SVS?</label>
+        <textarea id="notes" name="notes" placeholder="Tell us about your use case..."></textarea>
+      </div>
+      <button class="submit" type="submit">Submit Application</button>
+    </form>
+
+    <p class="muted" style="margin-top:14px">Note: This is a lightweight form. If you want to collect real submissions, we can wire it to Supabase or a form backend.</p>
+  </div>
+</body>
+</html>

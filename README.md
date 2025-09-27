@@ -1,58 +1,170 @@
-# Coming Soon Website
+# Survival Planner Website
 
-A modern, responsive "Coming Soon" website built with HTML, CSS, and JavaScript.
+A Flutter web application with Supabase backend integration for survival planning and data management.
 
 ## Features
 
-- **Responsive Design**: Works perfectly on desktop, tablet, and mobile devices
-- **Countdown Timer**: Dynamic countdown to launch date
-- **Email Notification**: Visitors can sign up to be notified when the site launches
-- **Modern UI**: Clean, gradient background with glassmorphism effects
-- **Interactive Elements**: Hover effects and smooth animations
+- 🔐 **Authentication**: User registration and login with Supabase Auth
+- 📱 **Responsive Design**: Works on desktop and mobile browsers
+- 🔄 **Real-time Data**: Live data synchronization with Supabase
+- 🌐 **Web Optimized**: Built specifically for web deployment
+- 💾 **Database Integration**: Full CRUD operations with Supabase
 
-## Files
+## Technologies Used
 
-- `index.html` - Main HTML structure
-- `styles.css` - CSS styling with responsive design
-- `script.js` - JavaScript for countdown timer and email functionality
+- **Flutter Web**: Cross-platform UI framework
+- **Supabase**: Backend-as-a-Service for database, auth, and real-time features
+- **Dart**: Programming language
+- **Provider**: State management (ready to use)
 
-## Customization
+## Setup Instructions
 
-### Change Launch Date
-Edit the launch date in `script.js`:
-```javascript
-const launchDate = new Date('2025-12-31T00:00:00').getTime();
+### Prerequisites
+
+- Flutter SDK (latest stable version)
+- Chrome browser for testing
+- Supabase account
+
+### 1. Clone and Setup
+
+```bash
+git clone <your-repo-url>
+cd surivalplanner_website
+flutter pub get
 ```
 
-### Modify Colors
-Update the gradient background in `styles.css`:
-```css
-background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+### 2. Supabase Configuration
+
+1. Create a new project at [supabase.io](https://supabase.io)
+2. Get your project URL and anon key from the API settings
+3. Update `lib/config/supabase_config.dart`:
+
+```dart
+static const String supabaseUrl = 'YOUR_SUPABASE_PROJECT_URL';
+static const String supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
 ```
 
-### Update Content
-Change the heading and description in `index.html`:
-```html
-<h1>Coming Soon</h1>
-<p>We're working hard to bring you something amazing. Stay tuned!</p>
+### 3. Database Setup (Optional)
+
+Create tables in your Supabase dashboard as needed. The app includes example service methods that you can customize.
+
+### 4. Run the Application
+
+```bash
+# For development
+flutter run -d chrome
+
+# For production build
+flutter build web
 ```
 
-## Usage
+## Project Structure
 
-1. Open `index.html` in a web browser
-2. The countdown will automatically start
-3. Visitors can enter their email to be notified
-4. The design is fully responsive and mobile-friendly
+```
+lib/
+├── config/
+│   └── supabase_config.dart     # Supabase initialization
+├── screens/
+│   ├── auth_screen.dart         # Login/Register screen
+│   └── home_screen.dart         # Main dashboard
+├── services/
+│   ├── auth_service.dart        # Authentication logic
+│   └── database_service.dart    # Database operations
+└── main.dart                    # App entry point
+```
 
-## Browser Support
+## Available VS Code Tasks
 
-- Chrome (recommended)
-- Firefox
-- Safari
-- Edge
+- **Run Flutter Web**: Starts the development server
+- Use `Ctrl+Shift+P` → "Tasks: Run Task" → "Run Flutter Web"
 
-## Notes
+## Key Features Explained
 
-- The email notification feature currently shows an alert. To make it functional, you'll need to integrate with a backend service or email API.
-- The countdown is set to December 31, 2025. Update this date as needed.
-- All styling uses modern CSS features like `backdrop-filter` for glassmorphism effects.
+### Authentication
+- Email/password authentication via Supabase Auth
+- Automatic session management
+- Secure sign-up and sign-in flows
+
+### Database Operations
+The `DatabaseService` provides methods for:
+- `getAllRecords()` - Fetch all records from a table
+- `insertRecord()` - Add new records
+- `updateRecord()` - Modify existing records
+- `deleteRecord()` - Remove records
+- `subscribeToTable()` - Real-time updates
+
+### Real-time Updates
+Subscribe to database changes:
+```dart
+DatabaseService.subscribeToTable('your_table', (payload) {
+  // Handle real-time updates
+});
+```
+
+## Deployment
+
+### Build for Production
+```bash
+flutter build web --release
+```
+
+The built files will be in `build/web/` directory.
+
+### Deploy Options
+- **Supabase Hosting**: Direct integration
+- **Netlify**: Drag and drop the `build/web` folder
+- **Vercel**: Connect your Git repository
+- **Firebase Hosting**: Use Firebase CLI
+
+## Environment Variables
+
+For production, consider using environment variables:
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+
+## Development Tips
+
+1. **Hot Reload**: Save files to see changes instantly
+2. **Debug Console**: Use browser dev tools for debugging
+3. **Flutter Inspector**: Use VS Code's Flutter Inspector for UI debugging
+4. **Supabase Dashboard**: Monitor database and auth in real-time
+
+## Troubleshooting
+
+### Common Issues
+
+1. **CORS Errors**: Add your domain to Supabase allowed origins
+2. **Auth Issues**: Check your Supabase auth configuration
+3. **Build Errors**: Run `flutter clean` and `flutter pub get`
+
+### Useful Commands
+
+```bash
+# Check for issues
+flutter analyze
+
+# Update dependencies
+flutter pub upgrade
+
+# Clean build cache
+flutter clean
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License.
+
+## Support
+
+For issues and questions:
+- Check the [Flutter documentation](https://docs.flutter.dev/)
+- Visit [Supabase documentation](https://supabase.io/docs)
+- Open an issue in this repository
