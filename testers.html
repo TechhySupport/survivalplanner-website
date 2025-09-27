@@ -4,19 +4,42 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Survival Planner – Tester Application</title>
-  <link rel="icon" type="image/png" href="web/assets/icon_logo.png">
+  <link rel="icon" type="image/png" href="assets/icon_logo.png">
   <link rel="stylesheet" href="styles.css" />
   <style>
-    body{ background:linear-gradient(145deg,#0f172a 0%,#111827 50%,#1f2937 100%); color:#e5e7eb }
+    :root{
+      --brand:#3B7AE7; /* Bright Blue */
+      --ink:#111827;   /* Main text */
+      --muted:#6B7280; /* Subtext */
+      --bg:#FAFAFA;    /* Page background */
+      --bg-alt:#FBFBFB;/* Alt background */
+      --card:#F5F2FA;  /* Card background */
+      --card-alt:#F2EFF7; /* Alt card */
+      --border:#F4EFF5;/* Divider */
+    }
+    body{ background:var(--bg); color:var(--ink); }
     .wrap{ max-width:900px; margin:40px auto; padding:0 20px }
-    .card{ background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:18px }
+    .card{ background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px }
     .row{ display:grid; grid-template-columns:1fr 1fr; gap:12px }
-    label{ font-size:14px; color:#b7c0ce }
-    input, textarea, select{ width:100%; padding:12px 14px; border-radius:10px; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.06); color:#e5e7eb }
+    @media (max-width:700px){ .row{ grid-template-columns:1fr } }
+    label{ font-size:14px; color:var(--muted) }
+    input, textarea, select{
+      width:100%; padding:12px 14px; border-radius:10px; border:1px solid var(--border);
+      background:#fff; color:var(--ink); outline:none; transition:border-color .15s ease, box-shadow .15s ease;
+    }
+    input:focus, textarea:focus, select:focus{ border-color:var(--brand); box-shadow:0 0 0 3px rgba(59,122,231,.15) }
     textarea{ min-height:120px }
-    .submit{ margin-top:14px; padding:12px 16px; border-radius:12px; background:#5b8cff; color:white; border:1px solid rgba(0,0,0,.2) }
-    a.btn{ padding:10px 14px; border:1px solid rgba(255,255,255,.12); border-radius:10px; margin-right:10px; display:inline-block }
-    .muted{ color:#9aa6b2 }
+    .submit{
+      margin-top:14px; padding:12px 16px; border-radius:12px; background:var(--brand); color:#fff; border:none;
+      box-shadow:0 6px 16px rgba(59,122,231,.25); cursor:pointer; font-weight:600; transition:transform .12s ease, box-shadow .2s ease;
+    }
+    .submit:hover{ transform:translateY(-1px); box-shadow:0 10px 22px rgba(59,122,231,.3) }
+    .submit:active{ transform:translateY(0) scale(.99) }
+    a.btn{
+      padding:10px 14px; border:1px solid var(--border); border-radius:10px; margin-right:10px; display:inline-block;
+      background:#fff; color:var(--brand); font-weight:600; text-decoration:none;
+    }
+    .muted{ color:var(--muted) }
   </style>
   <script>
     document.addEventListener('DOMContentLoaded',()=>{
@@ -24,9 +47,19 @@
       form.addEventListener('submit', (e)=>{
         e.preventDefault();
         const data=Object.fromEntries(new FormData(form).entries());
-        console.log('Tester application submitted', data);
-        alert('Thanks! Your tester application has been received.');
-        form.reset();
+        const subject = encodeURIComponent('New Tester Application');
+        const bodyLines = [
+          `Whiteout In Game name: ${data.ign || ''}`,
+          `Discord User ID: ${data.discord || ''}`,
+          `Platform: ${data.platform || ''}`,
+          `How long played Whiteout: ${data.experience || ''}`,
+          '',
+          `Why they want to be a tester:`,
+          `${(data.notes||'').trim()}`
+        ];
+        const body = encodeURIComponent(bodyLines.join('\n'));
+        const mailto = `mailto:maikl.mansour9@gmail.com?subject=${subject}&body=${body}`;
+        window.location.href = mailto;
       });
     });
   </script>
@@ -40,12 +73,12 @@
     <form id="testerForm" class="card">
       <div class="row">
         <div>
-          <label for="name">Full name</label>
-          <input id="name" name="name" placeholder="Jane Doe" required />
+          <label for="ign">Whiteout In Game name</label>
+          <input id="ign" name="ign" placeholder="Your in‑game name" required />
         </div>
         <div>
-          <label for="email">Email</label>
-          <input id="email" type="email" name="email" placeholder="jane@example.com" required />
+          <label for="discord">Discord User ID</label>
+          <input id="discord" name="discord" placeholder="username#1234 or 123456789012345678" required />
         </div>
       </div>
       <div class="row">
@@ -58,22 +91,21 @@
           </select>
         </div>
         <div>
-          <label for="experience">Prep experience level</label>
+          <label for="experience">how long you played with WHiteout</label>
           <select id="experience" name="experience" required>
-            <option value="Beginner">Beginner</option>
-            <option value="Intermediate">Intermediate</option>
-            <option value="Advanced">Advanced</option>
+            <option value="Under a year">Under a year</option>
+            <option value="Over a year">Over a year</option>
           </select>
         </div>
       </div>
       <div>
-  <label for="notes">Why do you want to test Survival Planner?</label>
-        <textarea id="notes" name="notes" placeholder="Tell us about your use case..."></textarea>
+        <label for="notes">Why you want to  be a tester for  us!</label>
+        <textarea id="notes" name="notes" placeholder="Share why you want to be a tester for us..."></textarea>
       </div>
       <button class="submit" type="submit">Submit Application</button>
     </form>
 
-  <p class="muted" style="margin-top:14px">Note: This is a lightweight form. If you want to collect real submissions, we can wire it to Supabase or a form backend.</p>
+
   </div>
 </body>
 </html>
