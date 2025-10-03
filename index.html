@@ -329,5 +329,30 @@
             ]
         }
         </script>
+    <script type="module">
+  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+  const supabaseUrl = "https://wdjophtkpqtpdkbcwxsq.supabase.co";
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indkam9waHRrcHF0cGRrYmN3eHNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2MzAxMTYsImV4cCI6MjA3MDIwNjExNn0.FG3LnqOIJ3fwp5qMAEmYRbF8mwF1ujBiGjEj7E8HnwI";
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  const hash = window.location.hash.substring(1);
+  const params = new URLSearchParams(hash);
+
+  const access_token = params.get("access_token");
+  const refresh_token = params.get("refresh_token");
+
+  if (access_token && refresh_token) {
+    supabase.auth.setSession({
+      access_token,
+      refresh_token,
+    }).then(() => {
+      document.body.innerHTML = "<h2>✅ Email confirmed! You can now close this page.</h2>";
+    }).catch(err => {
+      document.body.innerHTML = "<h2>❌ Error confirming: " + err.message + "</h2>";
+    });
+  }
+</script>
 </body>
 </html>
