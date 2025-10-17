@@ -6,6 +6,9 @@
   <title>Survival Planner – Tester Application</title>
   <link rel="icon" type="image/png" href="assets/icon_logo.png">
   <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root{
       --brand:#3B7AE7; /* Bright Blue */
@@ -16,50 +19,224 @@
       --card:#F5F2FA;  /* Card background */
       --card-alt:#F2EFF7; /* Alt card */
       --border:#F4EFF5;/* Divider */
+      --ring: rgba(59,122,231,.18);
+      --shadow: 0 10px 30px rgba(17,24,39,.07), 0 2px 6px rgba(17,24,39,.04);
+      --shadow-strong: 0 20px 50px rgba(17,24,39,.12), 0 6px 16px rgba(17,24,39,.06);
+      --control-h: 46px;
     }
-    body{ background:var(--bg); color:var(--ink); }
-    .wrap{ max-width:900px; margin:40px auto; padding:0 20px }
-    .card{ background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px }
-    .row{ display:grid; grid-template-columns:1fr 1fr; gap:12px }
+    *, *::before, *::after{ box-sizing: border-box }
+    body{
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(59,122,231,.08), transparent 60%),
+        radial-gradient(1000px 500px at 110% 10%, rgba(242,239,247,.8), transparent 50%),
+        var(--bg);
+      color:var(--ink);
+      min-height:100vh;
+      font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    .wrap{ max-width:820px; margin:64px auto; padding:0 20px }
+    .page-head{ text-align:center; margin-bottom:20px }
+    .page-head h1{ font-size:clamp(30px,4.2vw,44px); line-height:1.06; margin:0; letter-spacing:-0.01em }
+    .page-head p{ color:var(--muted); margin-top:8px }
+    .card{
+      background: rgba(255,255,255,0.75);
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+      border:1px solid rgba(244,239,245,0.9);
+      border-radius:18px;
+      padding:26px;
+      box-shadow: var(--shadow);
+      transition: box-shadow .25s ease, transform .12s ease;
+    }
+    .card:hover{ box-shadow: var(--shadow-strong) }
+    .row{ display:grid; grid-template-columns:1fr 1fr; gap:16px }
     @media (max-width:700px){ .row{ grid-template-columns:1fr } }
-    label{ font-size:14px; color:var(--muted) }
+    .group{ position:relative }
+    label{ font-size:13px; color:var(--muted); display:block; margin-bottom:6px; font-weight:600; letter-spacing:.02em }
+    .field{ position:relative }
+    .icon{ position:absolute; left:12px; top:50%; transform:translateY(-50%); width:18px; height:18px; color:var(--brand); opacity:.85; pointer-events:none }
+    :where(input, select, textarea){ font:inherit }
     input, textarea, select{
-      width:100%; padding:12px 14px; border-radius:10px; border:1px solid var(--border);
-      background:#fff; color:var(--ink); outline:none; transition:border-color .15s ease, box-shadow .15s ease;
+      width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--border);
+      background:#fff; color:var(--ink); outline:none; transition:border-color .15s ease, box-shadow .15s ease, transform .08s ease, background-color .15s ease;
     }
-    input:focus, textarea:focus, select:focus{ border-color:var(--brand); box-shadow:0 0 0 3px rgba(59,122,231,.15) }
-    textarea{ min-height:120px }
+    input, select{ height: var(--control-h) }
+    .with-icon{ padding-left:40px }
+    .field:focus-within .icon{ opacity:1 }
+    input:focus, textarea:focus, select:focus{ border-color:var(--brand); box-shadow:0 0 0 4px var(--ring); background:#fff }
+    .field:focus-within input, .field:focus-within textarea, .field:focus-within select{ transform: translateY(-1px) }
+    textarea{ min-height:130px; resize:vertical }
+    .field-textarea .icon{ top:16px; transform:none }
+    ::placeholder{ color: #9CA3AF }
+    /* Normalize selects across browsers and add custom arrow */
+    select{
+      -webkit-appearance: none; -moz-appearance: none; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='%236B7280'%3E%3Cpath d='M7 10l5 5 5-5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center; background-size: 14px 14px;
+      padding-right: 36px;
+    }
+    select::-ms-expand{ display:none }
+    .hint{ color:var(--muted); font-size:12px; margin-top:6px }
     .submit{
-      margin-top:14px; padding:12px 16px; border-radius:12px; background:var(--brand); color:#fff; border:none;
-      box-shadow:0 6px 16px rgba(59,122,231,.25); cursor:pointer; font-weight:600; transition:transform .12s ease, box-shadow .2s ease;
+      margin-top:16px; padding:13px 18px; border-radius:14px; background:linear-gradient(135deg, #3B7AE7 0%, #5865F2 100%); color:#fff; border:none;
+      box-shadow:0 10px 24px rgba(59,122,231,.28), 0 4px 10px rgba(88,101,242,.18);
+      cursor:pointer; font-weight:700; letter-spacing:.2px; transition:transform .12s ease, box-shadow .2s ease, filter .2s ease; width:100%;
     }
-    .submit:hover{ transform:translateY(-1px); box-shadow:0 10px 22px rgba(59,122,231,.3) }
+    .submit:hover{ transform:translateY(-1px); box-shadow:var(--shadow-strong) }
     .submit:active{ transform:translateY(0) scale(.99) }
+    .submit.loading{ position:relative; filter:saturate(.9); cursor:wait }
+    .submit.loading::after{
+      content:""; position:absolute; right:16px; top:50%; transform:translateY(-50%);
+      width:16px; height:16px; border-radius:50%; border:2px solid rgba(255,255,255,.6); border-top-color:#fff; animation:spin .9s linear infinite;
+    }
+    @keyframes spin{ to { transform: translateY(-50%) rotate(360deg) } }
     a.btn{
       padding:10px 14px; border:1px solid var(--border); border-radius:10px; margin-right:10px; display:inline-block;
-      background:#fff; color:var(--brand); font-weight:600; text-decoration:none;
+      background:#fff; color:var(--brand); font-weight:700; text-decoration:none; box-shadow:0 2px 8px rgba(0,0,0,.04)
     }
     .muted{ color:var(--muted) }
+    .msg{
+      margin-top:12px; padding:10px 12px; border-radius:10px; font-size:14px; line-height:1.35; display:none
+    }
+    .msg.show{ display:block }
+    .msg.ok{ background:#E8F4FF; border:1px solid #CFE6FF; color:#0B3B85 }
+    .msg.err{ background:#FFEDEE; border:1px solid #FFD1D6; color:#8A1020 }
+    /* Validation visuals */
+    form.was-validated input:invalid,
+    form.was-validated select:invalid,
+    form.was-validated textarea:invalid{
+      border-color:#EF4444;
+      box-shadow:0 0 0 4px rgba(239,68,68,.12);
+    }
+    /* Toasts */
+    .toasts{ position:fixed; right:16px; top:16px; display:flex; flex-direction:column; gap:10px; z-index:9999 }
+    .toast{ min-width:260px; max-width:360px; padding:12px 14px; border-radius:12px; color:#0B3B85; background:#E8F4FF; border:1px solid #CFE6FF; box-shadow:var(--shadow); display:flex; gap:10px; align-items:flex-start; transform:translateY(-8px); opacity:0; animation:toast-in .25s ease forwards }
+    .toast.err{ background:#FFEDEE; border-color:#FFD1D6; color:#8A1020 }
+    .toast .title{ font-weight:700; font-size:14px; margin-bottom:2px }
+    .toast .msg{ font-size:13px; margin:0; padding:0; background:none; border:none; display:block }
+    .toast .close{ margin-left:auto; background:transparent; border:none; color:inherit; cursor:pointer; opacity:.7 }
+    @keyframes toast-in{ to { transform:translateY(0); opacity:1 } }
+    @keyframes toast-out{ to { transform:translateY(-8px); opacity:0 } }
   </style>
   <script>
     document.addEventListener('DOMContentLoaded',()=>{
-      const form=document.getElementById('testerForm');
-      form.addEventListener('submit', (e)=>{
+      const form = document.getElementById('testerForm');
+  const submitBtn = form.querySelector('.submit');
+      // Toast container
+      const toastHost = document.createElement('div');
+      toastHost.className = 'toasts';
+      document.body.appendChild(toastHost);
+      const showToast = (title, message, kind='ok') => {
+        const t = document.createElement('div');
+        t.className = `toast ${kind==='err'?'err':''}`;
+        t.innerHTML = `<div><div class="title">${title}</div><div class="msg">${message}</div></div><button class="close" aria-label="Close">×</button>`;
+        const close = () => { t.style.animation = 'toast-out .2s ease forwards'; setTimeout(()=> t.remove(), 180); };
+        t.querySelector('.close').addEventListener('click', close);
+        toastHost.appendChild(t);
+        setTimeout(close, 4000);
+      };
+      // Create a small message area
+  const msg = document.createElement('div');
+  msg.className = 'msg';
+  msg.setAttribute('role','status');
+  msg.setAttribute('aria-live','polite');
+  form.appendChild(msg);
+
+  // Replace the mailto-based flow with a fetch POST to Formspree
+  // Instructions: create a free form on https://formspree.io/ and replace FORM_ID below with your form's ID.
+  // Example endpoint: https://formspree.io/f/abcdwxyz
+  const FORMSPREE_ENDPOINT = 'https://formspree.io/f/mvgwlaad';
+
+  // Helper to check if the endpoint is still the placeholder
+  const isPlaceholderEndpoint = (url) => /REPLACE_WITH_YOUR_ID/.test(url) || url.includes('REPLACE_WITH_YOUR_ID');
+
+      form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const data=Object.fromEntries(new FormData(form).entries());
-        const subject = encodeURIComponent('New Tester Application');
-        const bodyLines = [
-          `Whiteout In Game name: ${data.ign || ''}`,
-          `Discord User ID: ${data.discord || ''}`,
-          `Platform: ${data.platform || ''}`,
-          `How long played Whiteout: ${data.experience || ''}`,
-          '',
-          `Why they want to be a tester:`,
-          `${(data.notes||'').trim()}`
-        ];
-        const body = encodeURIComponent(bodyLines.join('\n'));
-        const mailto = `mailto:maikl.mansour9@gmail.com?subject=${subject}&body=${body}`;
-        window.location.href = mailto;
+  msg.textContent = '';
+  msg.className = 'msg';
+        const formData = new FormData(form);
+
+        // Basic front-end validation for required fields
+        const required = ['ign','email','platform'];
+        let firstInvalid = null;
+        for(const name of required){
+          if(!formData.get(name) || !String(formData.get(name)).trim()){
+            firstInvalid = firstInvalid || form.querySelector(`[name="${name}"]`);
+          }
+        }
+        if(firstInvalid){
+          msg.textContent = 'Please fill in all required fields.';
+          msg.className = 'msg err show';
+          form.classList.add('was-validated');
+          firstInvalid.focus();
+          firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+        // Validate email format
+        const email = String(formData.get('email') || '');
+        const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if(!emailRe.test(email)){
+          msg.textContent = 'Please enter a valid email address.';
+          msg.className = 'msg err show';
+          form.classList.add('was-validated');
+          const emailEl = form.querySelector('#email');
+          emailEl && emailEl.focus();
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Sending...';
+        submitBtn.classList.add('loading');
+
+        try{
+          if(isPlaceholderEndpoint(FORMSPREE_ENDPOINT)){
+            msg.textContent = 'Formspree endpoint not configured. Create a form at https://formspree.io/ and replace the FORMSPREE_ENDPOINT value in the page with your form URL (example: https://formspree.io/f/abcdwxyz).';
+            msg.className = 'msg err show';
+            return;
+          }
+          // Formspree accepts FormData directly
+          const res = await fetch(FORMSPREE_ENDPOINT, {
+            method: 'POST',
+            headers: {
+              'Accept': 'application/json'
+            },
+            body: formData
+          });
+
+          if(res.ok){
+            msg.textContent = 'Thank you — your application has been received!';
+            msg.className = 'msg ok show';
+            form.reset();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            form.classList.remove('was-validated');
+            showToast('Application received', 'We’ll contact you via email if selected.', 'ok');
+          } else {
+            // Try to extract helpful error text from the response
+            const body = await res.json().catch(()=>null);
+            // Formspree returns 404 with a JSON message when the form ID isn't found
+            if(res.status === 404 || (body && /form not found/i.test(JSON.stringify(body)))){
+              msg.innerHTML = 'Form not found on Formspree. Double-check your FORMSPREE_ENDPOINT value. Create or copy the form endpoint from https://formspree.io/ and paste it into the page.';
+              msg.className = 'msg err show';
+              showToast('Form error', 'Formspree form not found. Check the endpoint.', 'err');
+            } else {
+              const errMsg = body && (body.error || body.message) ? (body.error || body.message) : 'Submission failed. Please try again later.';
+              msg.textContent = errMsg;
+              msg.className = 'msg err show';
+              showToast('Submission failed', errMsg, 'err');
+            }
+          }
+
+        } catch(err){
+          msg.textContent = 'Network error. Please check your connection and try again.';
+          msg.className = 'msg err show';
+          showToast('Network error', 'Please check your connection and try again.', 'err');
+        } finally{
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Submit Application';
+          submitBtn.classList.remove('loading');
+        }
       });
     });
   </script>
@@ -67,40 +244,68 @@
 <body>
   <div class="wrap">
     <p><a class="btn" href="index.html">← Back to Home</a></p>
-  <h1>Tester Application</h1>
-  <p class="muted">Apply to try Survival Planner for free and help shape the roadmap. We’ll reach out if selected.</p>
+  <div class="page-head">
+    <h1>Become a Tester</h1>
+    <p class="muted">Apply to try Survival Planner for free and help shape the roadmap. We’ll reach out if selected.</p>
+  </div>
 
     <form id="testerForm" class="card">
       <div class="row">
-        <div>
+        <div class="group">
           <label for="ign">Whiteout In Game name</label>
-          <input id="ign" name="ign" placeholder="Your in‑game name" required />
+          <div class="field">
+            <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.33 0-8 2.17-8 5v1h16v-1c0-2.83-3.67-5-8-5Z"/></svg>
+            <input class="with-icon" id="ign" name="ign" placeholder="Your in‑game name" required />
+          </div>
         </div>
-        <div>
-          <label for="discord">Discord User ID</label>
-          <input id="discord" name="discord" placeholder="username#1234 or 123456789012345678" required />
+        <div class="group">
+          <label for="email">Email</label>
+          <div class="field">
+            <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Zm0 2v.01L12 13 4 6.01V6Zm-16 12V8l8 6 8-6v10Z"/></svg>
+            <input class="with-icon" id="email" name="email" type="email" placeholder="you@example.com" required />
+          </div>
         </div>
       </div>
       <div class="row">
-        <div>
-          <label for="platform">Platform</label>
-          <select id="platform" name="platform" required>
-            <option value="Android">Android</option>
-            <option value="iOS">iOS</option>
-            <option value="Both">Both</option>
-          </select>
+        <div class="group">
+          <label for="discord">Discord User ID <span class="muted">(optional)</span></label>
+          <div class="field">
+            <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M20.317 4.369A19.79 19.79 0 0 0 16.558 3c-.2.358-.433.84-.594 1.217a18.27 18.27 0 0 0-5.928 0A8.258 8.258 0 0 0 9.442 3c-1.33.248-2.64.68-3.758 1.369C2.941 7.164 2.326 9.88 2.5 12.561c1.57 1.175 3.09 1.892 4.586 2.369.37-.508.701-1.053.989-1.625-.546-.207-1.07-.469-1.566-.77.13-.096.257-.198.379-.302a13.09 13.09 0 0 0 6.714 0c.123.104.25.206.379.302-.495.301-1.02.563-1.566.77.288.572.619 1.117.989 1.625 1.496-.477 3.017-1.194 4.586-2.369.2-2.992-.497-5.676-2.293-8.192zM9.7 12.348c-.73 0-1.328-.67-1.328-1.493 0-.823.586-1.493 1.328-1.493.742 0 1.34.67 1.328 1.493 0 .823-.586 1.493-1.328 1.493zm4.6 0c-.73 0-1.328-.67-1.328-1.493 0-.823.586-1.493 1.328-1.493.742 0 1.34.67 1.328 1.493 0 .823-.586 1.493-1.328 1.493z"/></svg>
+            <input class="with-icon" id="discord" name="discord" placeholder="username#1234 or 123456789012345678" />
+          </div>
         </div>
-        <div>
-          <label for="experience">how long you played with WHiteout</label>
-          <select id="experience" name="experience" required>
-            <option value="Under a year">Under a year</option>
-            <option value="Over a year">Over a year</option>
-          </select>
+        <div class="group">
+          <label for="platform">Platform</label>
+          <div class="field">
+            <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M3 4h18v2H3zm3 7h12v2H6zm-3 7h18v2H3z"/></svg>
+            <select class="with-icon" id="platform" name="platform" required>
+              <option value="Android">Android</option>
+              <option value="iOS">iOS</option>
+              <option value="Both">Both</option>
+            </select>
+          </div>
         </div>
       </div>
+      <div class="row">
+        <div class="group">
+          <label for="experience">How long have you played Whiteout?</label>
+          <div class="field">
+            <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M12 8a1 1 0 0 1 1 1v3.382l2.447 1.41a1 1 0 1 1-1 1.732l-3-1.732A1 1 0 0 1 11 13V9a1 1 0 0 1 1-1Zm0-6a10 10 0 1 1-10 10A10 10 0 0 1 12 2Z"/></svg>
+            <select class="with-icon" id="experience" name="experience" required>
+              <option value="Under a year">Under a year</option>
+              <option value="Over a year">Over a year</option>
+            </select>
+          </div>
+        </div>
+        <div class="group"></div>
+      </div>
       <div>
-        <label for="notes">Why you want to  be a tester for  us!</label>
-        <textarea id="notes" name="notes" placeholder="Share why you want to be a tester for us..."></textarea>
+        <label for="notes">Why do you want to be a tester?</label>
+        <div class="field field-textarea">
+          <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M21 4a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v16l4-4h12a2 2 0 0 0 2-2Z"/></svg>
+          <textarea class="with-icon" id="notes" name="notes" placeholder="Share a few lines on your experience and what you hope to test..."></textarea>
+        </div>
+        <p class="hint">We’re prioritizing active players who can provide clear feedback.</p>
       </div>
       <button class="submit" type="submit">Submit Application</button>
     </form>
