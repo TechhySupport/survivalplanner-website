@@ -85,21 +85,42 @@
     @media (max-width:1020px){ .hero{ grid-template-columns:1fr; gap:22px; margin:56px auto 30px } }
     @media (max-width:600px){ .cta-row{ gap:10px } .store-btn{ width:100%; justify-content:center } }
     </style>
-        <script>
-                // Bridge Supabase OAuth callbacks that land on the root to the Flutter app entry
-                // This ensures URLs like https://survival-planner.com/?code=... get forwarded to /web/index.html
-                (function(){
-                    try {
-                        var sp = new URLSearchParams(window.location.search);
-                        var state = sp.get('state') || '';
-                        // GoTrue may return ?code, or token/error params; detect and forward
-                        if (sp.has('code') || sp.has('access_token') || sp.has('error_description') || state.indexOf('supabase') !== -1) {
-                            var dest = window.location.origin + '/web/index.html' + window.location.search;
-                            window.location.replace(dest);
-                        }
-                    } catch (e) { /* no-op */ }
-                })();
-        </script>
+            <script>
+                    // Early routing bridge for static hosting
+                    // 1) Recover deep links from 404.html (?path=...) and forward /map/:slug to the Flutter SPA
+                    // 2) Bridge Supabase OAuth callbacks (?code=...) to /web/index.html so the app can finish login
+                    (function(){
+                        try {
+                            var sp = new URLSearchParams(window.location.search);
+                            var recovered = sp.get('path'); // set by 404.html
+                            if (recovered) {
+                                // Ensure recovered is absolute-ish for parsing
+                                var recUrl = new URL(recovered, window.location.origin);
+                                var recPathQuery = recUrl.pathname + recUrl.search;
+                                if (recUrl.pathname.indexOf('/map/') === 0) {
+                                    var dest1 = window.location.origin + '/web/index.html#' + recPathQuery;
+                                    window.location.replace(dest1);
+                                    return;
+                                }
+                            }
+                            var path = window.location.pathname;
+                            if (path.indexOf('/map/') === 0) {
+                                // Direct access to /map/:slug on root — forward into Flutter with hash routing
+                                var dest2 = window.location.origin + '/web/index.html#' + path + window.location.search;
+                                window.location.replace(dest2);
+                                return;
+                            }
+
+                            // Supabase OAuth callback bridge on root
+                            var state = sp.get('state') || '';
+                            if (sp.has('code') || sp.has('access_token') || sp.has('error_description') || state.indexOf('supabase') !== -1) {
+                                var dest3 = window.location.origin + '/web/index.html' + window.location.search;
+                                window.location.replace(dest3);
+                                return;
+                            }
+                        } catch (e) { /* no-op */ }
+                    })();
+            </script>
     
     <script>
         // Smooth scroll for in-page links

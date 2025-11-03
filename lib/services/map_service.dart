@@ -36,10 +36,11 @@ class MapService {
   }
 
   // 2.4 Build the two share links
+  // Use hash-based SPA route for reliability on static hosting
   static String viewLink(String slug) =>
-      'https://survival-planner.com/map/$slug';
+      'https://survival-planner.com/web/index.html#/map/$slug';
   static String editLink(String slug) =>
-      'https://survival-planner.com/map/$slug?edit=1';
+      'https://survival-planner.com/web/index.html#/map/$slug?edit=1';
 
   // 4) Load by slug
   static Future<Map<String, dynamic>?> loadMapBySlug(String slug) async {
