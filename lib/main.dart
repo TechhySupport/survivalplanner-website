@@ -28,6 +28,7 @@ import 'services/analytics_service.dart';
 // route logging removed
 import 'web/web_landing.dart';
 import 'hivemap/hivemap_screen.dart';
+import 'hivemap/hivemap_editor.dart';
 
 // Clean single implementation of Survival Planner main entry.
 const supabaseUrl = 'https://wdjophtkpqtpdkbcwxsq.supabase.co';
@@ -71,6 +72,14 @@ class MyApp extends StatelessWidget {
           final name = settings.name;
           if (name != null) {
             final uri = Uri.parse(name);
+            // Direct editor route: /hivemap -> open HiveMapEditor immediately
+            if (uri.pathSegments.length == 1 &&
+                uri.pathSegments[0] == 'hivemap') {
+              return MaterialPageRoute(
+                builder: (_) => const HiveMapEditor(),
+                settings: settings,
+              );
+            }
             if (uri.pathSegments.length == 2 && uri.pathSegments[0] == 'map') {
               final slug = uri.pathSegments[1];
               final canEdit = uri.queryParameters['edit'] == '1';
