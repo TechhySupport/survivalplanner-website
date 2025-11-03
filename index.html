@@ -85,6 +85,21 @@
     @media (max-width:1020px){ .hero{ grid-template-columns:1fr; gap:22px; margin:56px auto 30px } }
     @media (max-width:600px){ .cta-row{ gap:10px } .store-btn{ width:100%; justify-content:center } }
     </style>
+        <script>
+                // Bridge Supabase OAuth callbacks that land on the root to the Flutter app entry
+                // This ensures URLs like https://survival-planner.com/?code=... get forwarded to /web/index.html
+                (function(){
+                    try {
+                        var sp = new URLSearchParams(window.location.search);
+                        var state = sp.get('state') || '';
+                        // GoTrue may return ?code, or token/error params; detect and forward
+                        if (sp.has('code') || sp.has('access_token') || sp.has('error_description') || state.indexOf('supabase') !== -1) {
+                            var dest = window.location.origin + '/web/index.html' + window.location.search;
+                            window.location.replace(dest);
+                        }
+                    } catch (e) { /* no-op */ }
+                })();
+        </script>
     
     <script>
         // Smooth scroll for in-page links
