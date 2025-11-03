@@ -80,7 +80,20 @@
       <div class="splash-sub">Preparing your experience</div>
     </div>
   </div>
-
+  <script>
+    // Pre-bootstrap normalization: convert query hints to hash routes for Flutter
+    (function preBootstrapRouteHint(){
+      try {
+        var sp = new URLSearchParams(window.location.search);
+        var go = sp.get('go');
+        if (go === 'hivemap') {
+          // Replace URL with hash route and drop the query to avoid duplicate params
+          var newUrl = window.location.origin + window.location.pathname + '#/hivemap';
+          window.history.replaceState(null, '', newUrl);
+        }
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
   <script src="flutter_bootstrap.js" async></script>
   <script>
     // Normalize legacy or incorrect hash fragments before Flutter boots
