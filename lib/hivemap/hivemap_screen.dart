@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/map_service.dart';
 import 'hivemap_editor.dart';
+import '../web/web_landing.dart';
 
 class HiveMapScreen extends StatefulWidget {
   final String slug;
@@ -20,6 +21,7 @@ class HiveMapScreen extends StatefulWidget {
 class _HiveMapScreenState extends State<HiveMapScreen> {
   Map<String, dynamic>? _row; // null=loading, {}=not found
   bool _canEdit = false;
+  bool _isOwner = false;
   late Future<void> _ready;
 
   @override
@@ -84,6 +86,7 @@ class _HiveMapScreenState extends State<HiveMapScreen> {
     setState(() {
       _row = row;
       _canEdit = allowEdit;
+      _isOwner = isOwner;
     });
   }
 
@@ -195,6 +198,51 @@ class _HiveMapScreenState extends State<HiveMapScreen> {
               onPressed: _saveToSharedMap,
               icon: const Icon(Icons.save),
               label: const Text('Save'),
+            ),
+          if (_isOwner)
+            TextButton(
+              onPressed: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('Delete Map'),
+                    content: const Text('Are you sure? This cannot be undone.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text(
+                          'Delete',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  try {
+                    await MapService.deleteMap(widget.slug);
+                    if (!mounted) return;
+                    // Go back to home after deletion
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const WebLandingPage()),
+                      (route) => false,
+                    );
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Delete failed: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text(
+                'Delete Map',
+                style: TextStyle(color: Colors.red),
+              ),
             ),
         ],
       ),

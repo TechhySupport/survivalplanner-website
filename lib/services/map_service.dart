@@ -53,6 +53,19 @@ class MapService {
     return Map<String, dynamic>.from(row as Map);
   }
 
+  // 5) Delete a map by slug (owner-only via RLS)
+  static Future<void> deleteMap(String slug) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      throw Exception('Not logged in');
+    }
+    await _client
+        .from('maps')
+        .delete()
+        .eq('slug', slug)
+        .eq('owner_id', user.id);
+  }
+
   // Helper to normalize stored data into a JSON-encodable objects list
   static List<dynamic> extractObjectsList(dynamic data) {
     if (data == null) return const [];
