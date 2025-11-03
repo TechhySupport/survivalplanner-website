@@ -60,7 +60,8 @@ class _MapMeta {
 }
 
 class HiveMapEditor extends StatefulWidget {
-  const HiveMapEditor({super.key});
+  final bool readOnly;
+  const HiveMapEditor({super.key, this.readOnly = false});
 
   @override
   State<HiveMapEditor> createState() => _HiveMapEditorState();
@@ -630,28 +631,30 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
                   onPressed: () => Navigator.pop(outerCtx),
                   child: const Text('Close'),
                 ),
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    final created = await _promptMemberEditor();
-                    if (created == null) return;
-                    setState(() {
-                      _members.add(created);
-                    });
-                    await _saveMembers();
-                    _refreshAllMemberNames();
-                    setStateDialog(() {});
-                  },
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Member'),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    await _importMembersFromSpreadsheet();
-                    setStateDialog(() {});
-                  },
-                  icon: const Icon(Icons.file_upload),
-                  label: const Text('Import Spreadsheet'),
-                ),
+                if (!widget.readOnly)
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      final created = await _promptMemberEditor();
+                      if (created == null) return;
+                      setState(() {
+                        _members.add(created);
+                      });
+                      await _saveMembers();
+                      _refreshAllMemberNames();
+                      setStateDialog(() {});
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Member'),
+                  ),
+                if (!widget.readOnly)
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      await _importMembersFromSpreadsheet();
+                      setStateDialog(() {});
+                    },
+                    icon: const Icon(Icons.file_upload),
+                    label: const Text('Import Spreadsheet'),
+                  ),
               ],
             );
           },
@@ -682,7 +685,7 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
                     constrained: false,
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onTapUp: _handleTap,
+                      onTapUp: widget.readOnly ? null : _handleTap,
                       child: GridRenderer(
                         gridW: _viewportSize,
                         gridH: _viewportSize,
@@ -696,7 +699,9 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
                       ),
                     ),
                   ),
-                  if (_menuPosition != null && _menuObjectIndex != null)
+                  if (_menuPosition != null &&
+                      _menuObjectIndex != null &&
+                      !widget.readOnly)
                     Positioned(
                       left: _menuPosition!.dx,
                       top: _menuPosition!.dy,
@@ -816,105 +821,107 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
           children: [
             Row(
               children: [
-                // File menu
-                PopupMenuButton<String>(
-                  tooltip: 'File',
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                    child: Text(
-                      'File',
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                // File menu (hidden in read-only)
+                if (!widget.readOnly)
+                  PopupMenuButton<String>(
+                    tooltip: 'File',
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      child: Text(
+                        'File',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
                     ),
+                    onSelected: (v) async {
+                      switch (v) {
+                        case 'Share':
+                          await _openShareDialogFromFileMenu();
+                          break;
+                        case 'Export as JPG':
+                          await _openExportDialog();
+                          break;
+                      }
+                    },
+                    itemBuilder: (ctx) => const [
+                      PopupMenuItem(value: 'Share', child: Text('Share…')),
+                      PopupMenuDivider(),
+                      PopupMenuItem(
+                        value: 'Export as JPG',
+                        child: Text('Export as JPG'),
+                      ),
+                    ],
                   ),
-                  onSelected: (v) async {
-                    switch (v) {
-                      case 'Share':
-                        await _openShareDialogFromFileMenu();
-                        break;
-                      case 'Export as JPG':
-                        await _openExportDialog();
-                        break;
-                    }
-                  },
-                  itemBuilder: (ctx) => const [
-                    PopupMenuItem(value: 'Share', child: Text('Share…')),
-                    PopupMenuDivider(),
-                    PopupMenuItem(
-                      value: 'Export as JPG',
-                      child: Text('Export as JPG'),
-                    ),
-                  ],
-                ),
                 const SizedBox(width: 8),
-                // Insert menu (choose placement tool)
-                PopupMenuButton<String>(
-                  tooltip: 'Insert',
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                    child: Text(
-                      'Insert',
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                // Insert menu (hidden in read-only)
+                if (!widget.readOnly)
+                  PopupMenuButton<String>(
+                    tooltip: 'Insert',
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      child: Text(
+                        'Insert',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
                     ),
+                    onSelected: (value) {
+                      switch (value) {
+                        case 'Flag':
+                          _selectTool(ObjectType.flag, 'Flag');
+                          break;
+                        case 'BT1':
+                          _selectTool(ObjectType.bearTrap, 'BT1');
+                          break;
+                        case 'BT2':
+                          _selectTool(ObjectType.bearTrap, 'BT2');
+                          break;
+                        case 'BT3':
+                          _selectTool(ObjectType.bearTrap, 'BT3');
+                          break;
+                        case 'HQ':
+                          _selectTool(ObjectType.hq, 'HQ');
+                          break;
+                        case 'MB1':
+                          _selectTool(ObjectType.member, 'BT1 Member');
+                          break;
+                        case 'MB2':
+                          _selectTool(ObjectType.member, 'BT2 Member');
+                          break;
+                        case 'MB3':
+                          _selectTool(ObjectType.member, 'BT3 Member');
+                          break;
+                        case 'Mountain':
+                          _selectTool(ObjectType.mountain, 'Mountain');
+                          break;
+                        case 'Lake':
+                          _selectTool(ObjectType.lake, 'Lake');
+                          break;
+                        case 'Alliance Node':
+                          _selectTool(ObjectType.allianceNode, 'Alliance Node');
+                          break;
+                      }
+                    },
+                    itemBuilder: (ctx) => const [
+                      PopupMenuItem(value: 'Flag', child: Text('Flag')),
+                      PopupMenuItem(value: 'BT1', child: Text('BT 1')),
+                      PopupMenuItem(value: 'BT2', child: Text('BT 2')),
+                      PopupMenuItem(value: 'BT3', child: Text('BT 3')),
+                      PopupMenuItem(value: 'HQ', child: Text('HQ')),
+                      PopupMenuDivider(),
+                      PopupMenuItem(value: 'MB1', child: Text('BT1 Member')),
+                      PopupMenuItem(value: 'MB2', child: Text('BT2 Member')),
+                      PopupMenuItem(value: 'MB3', child: Text('BT3 Member')),
+                      PopupMenuDivider(),
+                      PopupMenuItem(
+                        value: 'Mountain',
+                        child: Text('Mountain (1x1)'),
+                      ),
+                      PopupMenuItem(value: 'Lake', child: Text('Lake (1x1)')),
+                      PopupMenuItem(
+                        value: 'Alliance Node',
+                        child: Text('Alliance Node (2x2)'),
+                      ),
+                    ],
                   ),
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'Flag':
-                        _selectTool(ObjectType.flag, 'Flag');
-                        break;
-                      case 'BT1':
-                        _selectTool(ObjectType.bearTrap, 'BT1');
-                        break;
-                      case 'BT2':
-                        _selectTool(ObjectType.bearTrap, 'BT2');
-                        break;
-                      case 'BT3':
-                        _selectTool(ObjectType.bearTrap, 'BT3');
-                        break;
-                      case 'HQ':
-                        _selectTool(ObjectType.hq, 'HQ');
-                        break;
-                      case 'MB1':
-                        _selectTool(ObjectType.member, 'BT1 Member');
-                        break;
-                      case 'MB2':
-                        _selectTool(ObjectType.member, 'BT2 Member');
-                        break;
-                      case 'MB3':
-                        _selectTool(ObjectType.member, 'BT3 Member');
-                        break;
-                      case 'Mountain':
-                        _selectTool(ObjectType.mountain, 'Mountain');
-                        break;
-                      case 'Lake':
-                        _selectTool(ObjectType.lake, 'Lake');
-                        break;
-                      case 'Alliance Node':
-                        _selectTool(ObjectType.allianceNode, 'Alliance Node');
-                        break;
-                    }
-                  },
-                  itemBuilder: (ctx) => const [
-                    PopupMenuItem(value: 'Flag', child: Text('Flag')),
-                    PopupMenuItem(value: 'BT1', child: Text('BT 1')),
-                    PopupMenuItem(value: 'BT2', child: Text('BT 2')),
-                    PopupMenuItem(value: 'BT3', child: Text('BT 3')),
-                    PopupMenuItem(value: 'HQ', child: Text('HQ')),
-                    PopupMenuDivider(),
-                    PopupMenuItem(value: 'MB1', child: Text('BT1 Member')),
-                    PopupMenuItem(value: 'MB2', child: Text('BT2 Member')),
-                    PopupMenuItem(value: 'MB3', child: Text('BT3 Member')),
-                    PopupMenuDivider(),
-                    PopupMenuItem(
-                      value: 'Mountain',
-                      child: Text('Mountain (1x1)'),
-                    ),
-                    PopupMenuItem(value: 'Lake', child: Text('Lake (1x1)')),
-                    PopupMenuItem(
-                      value: 'Alliance Node',
-                      child: Text('Alliance Node (2x2)'),
-                    ),
-                  ],
-                ),
                 const SizedBox(width: 8),
                 TextButton(
                   onPressed: _openMembersListDialog,
@@ -924,90 +931,107 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                TextButton(
-                  onPressed: _openResetDialog,
-                  child: const Text(
-                    'Reset',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.red,
+                if (!widget.readOnly)
+                  TextButton(
+                    onPressed: _openResetDialog,
+                    child: const Text(
+                      'Reset',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.red,
+                      ),
                     ),
                   ),
-                ),
+                if (widget.readOnly)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      'View Only',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ),
                 const Spacer(),
               ],
             ),
             const SizedBox(height: 6),
             Row(
               children: [
-                OutlinedButton.icon(
-                  onPressed: _undoStack.isNotEmpty ? _undo : null,
-                  icon: const Icon(Icons.undo),
-                  label: const Text('Undo'),
-                ),
-                const SizedBox(width: 6),
-                OutlinedButton.icon(
-                  onPressed: _redoStack.isNotEmpty ? _redo : null,
-                  icon: const Icon(Icons.redo),
-                  label: const Text('Redo'),
-                ),
+                if (!widget.readOnly)
+                  OutlinedButton.icon(
+                    onPressed: _undoStack.isNotEmpty ? _undo : null,
+                    icon: const Icon(Icons.undo),
+                    label: const Text('Undo'),
+                  ),
+                if (!widget.readOnly) const SizedBox(width: 6),
+                if (!widget.readOnly)
+                  OutlinedButton.icon(
+                    onPressed: _redoStack.isNotEmpty ? _redo : null,
+                    icon: const Icon(Icons.redo),
+                    label: const Text('Redo'),
+                  ),
                 const Spacer(),
                 Text(
                   'Map: $_currentMapName',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed: _isSyncing ? null : _saveMap,
-                  icon: _isSyncing
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.save_outlined),
-                  label: Text(_isSyncing ? 'Saving…' : 'Save'),
-                ),
-                const SizedBox(width: 6),
-                OutlinedButton.icon(
-                  onPressed: () => _openMapPicker(force: true),
-                  icon: const Icon(Icons.folder_open),
-                  label: const Text('Open'),
-                ),
-                const SizedBox(width: 6),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    final id = _currentMapId;
-                    if (id == null) return;
-                    final ok = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Delete this map?'),
-                        content: Text(
-                          '"$_currentMapName" will be deleted. This cannot be undone.',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, false),
-                            child: const Text('Cancel'),
-                          ),
-                          ElevatedButton(
-                            onPressed: () => Navigator.pop(ctx, true),
-                            child: const Text('Delete'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (ok == true) {
-                      await _deleteCurrentMap();
-                    }
-                  },
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    color: Colors.redAccent,
+                if (!widget.readOnly)
+                  OutlinedButton.icon(
+                    onPressed: _isSyncing ? null : _saveMap,
+                    icon: _isSyncing
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save_outlined),
+                    label: Text(_isSyncing ? 'Saving…' : 'Save'),
                   ),
-                  label: const Text('Delete'),
-                ),
+                if (!widget.readOnly) const SizedBox(width: 6),
+                if (!widget.readOnly)
+                  OutlinedButton.icon(
+                    onPressed: () => _openMapPicker(force: true),
+                    icon: const Icon(Icons.folder_open),
+                    label: const Text('Open'),
+                  ),
+                if (!widget.readOnly) const SizedBox(width: 6),
+                if (!widget.readOnly)
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final id = _currentMapId;
+                      if (id == null) return;
+                      final ok = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Delete this map?'),
+                          content: Text(
+                            '"$_currentMapName" will be deleted. This cannot be undone.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Cancel'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('Delete'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (ok == true) {
+                        await _deleteCurrentMap();
+                      }
+                    },
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: Colors.redAccent,
+                    ),
+                    label: const Text('Delete'),
+                  ),
               ],
             ),
           ],

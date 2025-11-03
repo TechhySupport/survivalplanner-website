@@ -38,7 +38,18 @@ class _HiveMapScreenState extends State<HiveMapScreen> {
     final ownerId = row['owner_id'] as String;
     final shareMode = (row['share_mode'] ?? 'private').toString();
     final isOwner = user != null && user.id == ownerId;
-    final allowEdit = isOwner || (shareMode == 'edit' && widget.wantEdit);
+    // Editing rules:
+    // - Owner can always edit
+    // - Public edit is allowed only if share mode is 'edit' AND link has ?edit=1
+    // - Otherwise: view-only
+    final bool allowEdit;
+    if (isOwner) {
+      allowEdit = true;
+    } else if (shareMode == 'edit' && widget.wantEdit) {
+      allowEdit = true;
+    } else {
+      allowEdit = false;
+    }
 
     // Prepare local cache for HiveMapEditor to load as the "last map"
     final p = await SharedPreferences.getInstance();
@@ -194,7 +205,8 @@ class _HiveMapScreenState extends State<HiveMapScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           // Show the editor with the locally prepared map
-          return const HiveMapEditor();
+          // Pass readOnly based on allowEdit decision
+          return HiveMapEditor(readOnly: !_canEdit);
         },
       ),
     );
