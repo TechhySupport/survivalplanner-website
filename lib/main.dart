@@ -94,6 +94,15 @@ class MyApp extends StatelessWidget {
           final name = settings.name;
           if (name != null) {
             final uri = Uri.parse(name);
+            // Back-compat: handle VS Code-style anchor like "#file:hivemap_editor.dart"
+            if ((uri.scheme == 'file' && uri.path == 'hivemap_editor.dart') ||
+                name == 'file:hivemap_editor.dart' ||
+                name == '/file:hivemap_editor.dart') {
+              return MaterialPageRoute(
+                builder: (_) => const HiveMapEditor(),
+                settings: settings,
+              );
+            }
             // Direct editor route: /hivemap -> open HiveMapEditor immediately
             if (uri.pathSegments.length == 1 &&
                 uri.pathSegments[0] == 'hivemap') {

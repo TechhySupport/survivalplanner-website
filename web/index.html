@@ -83,6 +83,18 @@
 
   <script src="flutter_bootstrap.js" async></script>
   <script>
+    // Normalize legacy or incorrect hash fragments before Flutter boots
+    (function normalizeHash(){
+      try {
+        var h = window.location.hash;
+        if (h === '#file:hivemap_editor.dart' || h.indexOf('#file:hivemap_editor.dart') === 0) {
+          var newUrl = window.location.origin + window.location.pathname + '#/hivemap' + window.location.search;
+          window.location.replace(newUrl);
+          return; // stop further execution; page will reload with new hash
+        }
+      } catch (e) { /* ignore */ }
+    })();
+
     // Hide the splash once Flutter attaches to the DOM
     window.addEventListener('flutter-first-frame', function () {
       const splash = document.getElementById('splash');
