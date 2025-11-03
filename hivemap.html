@@ -19,8 +19,9 @@
     // Force the Flutter route to the Hive Map editor
     (function ensureHiveMapRoute(){
       try{
-        if(location.hash !== '#/hivemap'){
-          history.replaceState(null,'', location.origin + location.pathname + '#/hivemap');
+        // Keep VS Code-style hash so the address bar shows the editor file
+        if(location.hash !== '#file:hivemap_editor.dart'){
+          history.replaceState(null,'', location.origin + location.pathname + '#file:hivemap_editor.dart');
         }
       }catch(e){}
     })();

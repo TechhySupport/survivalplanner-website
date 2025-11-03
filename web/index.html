@@ -87,33 +87,40 @@
         var sp = new URLSearchParams(window.location.search);
         var go = sp.get('go');
         if (go === 'hivemap') {
-          // Replace URL with hash route and drop the query to avoid duplicate params
-          var newUrl = window.location.origin + window.location.pathname + '#/hivemap';
+          // Replace URL with VS Code-style file hash that our router recognizes; drop the query
+          var newUrl = window.location.origin + window.location.pathname + '#file:hivemap_editor.dart';
           window.history.replaceState(null, '', newUrl);
+        }
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
+  <script>
+    // Normalize legacy or incorrect hash fragments BEFORE Flutter boots
+    (function normalizeHashEarly(){
+      try {
+        var h = window.location.hash || '';
+        // Map common non-editor file anchors to the editor file anchor
+        // Matches: #file:index.html, #file:main.dart, #file:web/index.html, #file:web/main.dart, with or without leading path
+        var m = h.match(/^#file:(.*)$/i);
+        if (m) {
+          var path = m[1];
+          var lower = path.toLowerCase();
+          if (/(^|\/)index\.html$/.test(lower) || /(^|\/)main\.dart$/.test(lower)) {
+            var newUrl = window.location.origin + window.location.pathname + '#file:hivemap_editor.dart';
+            window.location.replace(newUrl);
+            return;
+          }
+        }
+        // Prefer the editor file anchor over the old hash route
+        if (h === '#/hivemap') {
+          var newUrl2 = window.location.origin + window.location.pathname + '#file:hivemap_editor.dart';
+          window.history.replaceState(null, '', newUrl2);
         }
       } catch (e) { /* ignore */ }
     })();
   </script>
   <script src="flutter_bootstrap.js" async></script>
   <script>
-    // Normalize legacy or incorrect hash fragments before Flutter boots
-    (function normalizeHash(){
-      try {
-        var h = window.location.hash;
-        // Any VS Code-style or stray "#file:*" fragment — route to Hive Map by default when launching via shortcuts
-        if (h && h.indexOf('#file:') === 0) {
-          var newUrl1 = window.location.origin + window.location.pathname + '#/hivemap';
-          window.location.replace(newUrl1);
-          return;
-        }
-        if (h === '#file:hivemap_editor.dart' || h.indexOf('#file:hivemap_editor.dart') === 0) {
-          var newUrl = window.location.origin + window.location.pathname + '#/hivemap' + window.location.search;
-          window.location.replace(newUrl);
-          return; // stop further execution; page will reload with new hash
-        }
-      } catch (e) { /* ignore */ }
-    })();
-
     // Hide the splash once Flutter attaches to the DOM
     window.addEventListener('flutter-first-frame', function () {
       const splash = document.getElementById('splash');
