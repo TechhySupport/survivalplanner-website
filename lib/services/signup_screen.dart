@@ -111,13 +111,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   Future<void> _signUpWithGoogle() async {
     try {
+      final currentUrl = Uri.base.toString();
+      final appEntry = '${Uri.base.origin}/web/index.html';
       await supabase.auth.signInWithOAuth(
         OAuthProvider.google,
-        // On web, explicitly return to site root to avoid 404s on static hosting
-        // On native, use the deep link callback.
-        redirectTo: kIsWeb
-            ? '${Uri.base.origin}/'
-            : 'io.supabase.flutter://login-callback/',
+        // On web return to Flutter entry so we can process redirect_to
+        redirectTo: kIsWeb ? appEntry : 'io.supabase.flutter://login-callback/',
+        queryParams: {'redirect_to': currentUrl},
       );
     } on AuthException catch (e) {
       if (!mounted) return;

@@ -101,12 +101,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _signInWithGoogle() async {
     try {
+      // Preserve current location so we can return here after OAuth
+      final currentUrl = Uri.base.toString();
+      final appEntry = '${Uri.base.origin}/web/index.html';
       await supabase.auth.signInWithOAuth(
         OAuthProvider.google,
-        // Ensure web redirects to site root to avoid 404s on static hosting
-        redirectTo: kIsWeb
-            ? '${Uri.base.origin}/'
-            : 'io.supabase.flutter://login-callback/',
+        redirectTo: kIsWeb ? appEntry : 'io.supabase.flutter://login-callback/',
+        // Pass through desired return URL so we can navigate back post-login
+        queryParams: {'redirect_to': currentUrl},
       );
     } on AuthException catch (e) {
       if (!mounted) return;

@@ -35,6 +35,8 @@ const supabaseUrl = 'https://wdjophtkpqtpdkbcwxsq.supabase.co';
 const supabaseKey =
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indkam9waHRrcHF0cGRrYmN3eHNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2MzAxMTYsImV4cCI6MjA3MDIwNjExNn0.FG3LnqOIJ3fwp5qMAEmYRbF8mwF1ujBiGjEj7E8HnwI';
 late final SupabaseClient supabase;
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+bool _handledAuthRedirect = false;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,6 +51,25 @@ Future<void> main() async {
 
   await Supabase.initialize(url: supabaseUrl, anonKey: supabaseKey);
   supabase = Supabase.instance.client;
+  // Handle post-OAuth redirect_to param to return users to their original page
+  Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    final session = data.session;
+    if (session == null || _handledAuthRedirect) return;
+    final qp = Uri.base.queryParameters;
+    final back = qp['redirect_to'];
+    if (back != null && back.isNotEmpty) {
+      _handledAuthRedirect = true;
+      try {
+        final backUri = Uri.parse(back);
+        final frag = backUri.fragment; // e.g. "/hivemap" or "map/slug"
+        final route = frag.isNotEmpty
+            ? (frag.startsWith('/') ? frag : '/$frag')
+            : (backUri.path.isNotEmpty ? backUri.path : '/');
+        // Navigate inside the Flutter app
+        navigatorKey.currentState?.pushNamedAndRemoveUntil(route, (r) => false);
+      } catch (_) {}
+    }
+  });
   runApp(const MyApp());
 }
 
@@ -65,6 +86,7 @@ class MyApp extends StatelessWidget {
       valueListenable: appLocale,
       builder: (_, locale, __) => MaterialApp(
         title: 'Survival Planner',
+        navigatorKey: navigatorKey,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         locale: locale ?? const Locale('en'),
