@@ -1,0 +1,44 @@
+{
+	"@@locale": "ar",
+	"title": "الإعدادات",
+	"language": "اللغة",
+	"welcomeMessage": "مرحبا بك في التطبيق",
+	"essenceStoneCalculator": "🧪 حاسبة حجر الجوهر",
+	"chiefCharm": "سحر القائد",
+	"eventPointCalculator": "📊 حاسبة نقاط الحدث",
+	"chiefGear": "معدات القائد",
+	"fireCrystalShard": "🔥 تحويل شظايا الكريستال الناري",
+	"furnaceBuildingCalculator": "🔥 حاسبة بناء الفرن",
+	"signInToYourAccount": "Sign in to your account",
+	"email": "Email",
+	"password": "Password",
+	"signIn": "Sign In",
+	"warning": "Warning",
+	"noCloudSync": "Your data will not be cloud synced.",
+	"goBackToSignIn": "Go back to sign in",
+	"continueText": "Continue",
+	"signedInAsGuest": "Signed in as guest (no cloud sync)",
+	"signInWithoutSignup": "Sign in without signup",
+	"continueWithGoogle": "Continue with Google",
+	"createAnAccount": "Create an account",
+	"signedOut": "Signed out",
+	"loadingUtcTime": "جارٍ تحميل وقت UTC...",
+	"utcTime": "توقيت UTC",
+	"utcToLocalConverter": "UTC → محول التوقيت المحلي",
+	"pickUtcTime": "اختر توقيت UTC",
+	"yourLocalTime": "وقتك المحلي",
+	"selectedUtc": "UTC المحدد",
+	"use24hFormat": "استخدم تنسيق 24 ساعة",
+	"login": "تسجيل الدخول",
+	"english": "الإنجليزية",
+	"spanish": "الإسبانية",
+	"swedish": "السويدية",
+	"indonesian": "الإندونيسية",
+	"korean": "الكورية",
+	"chinese": "الصينية",
+	"loginComingSoon": "ميزة تسجيل الدخول قادمة قريباً",
+	"contactUs": "اتصل بنا",
+	"redeem": "استرداد",
+	"credits": "الاعتمادات",
+	"useDeviceDefault": "استخدم إعداد الجهاز الافتراضي"
+}

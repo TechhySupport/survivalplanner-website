@@ -1,0 +1,115 @@
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class TimerTabs extends StatefulWidget {
+  const TimerTabs({super.key});
+
+  @override
+  _TimerTabsState createState() => _TimerTabsState();
+}
+
+class _TimerTabsState extends State<TimerTabs>
+    with SingleTickerProviderStateMixin {
+  late TabController _controller;
+  bool serverResetEnabled = false;
+  Map<String, TimeOfDay?> savedTimes = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TabController(length: 4, vsync: this);
+    _loadSavedTimes();
+  }
+
+  Future<void> _loadSavedTimes() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keys = ['Bear Trap', 'Crazy Joe', 'Foundry'];
+    for (var key in keys) {
+      final hour = prefs.getInt('${key}_hour');
+      final minute = prefs.getInt('${key}_minute');
+      if (hour != null && minute != null) {
+        savedTimes[key] = TimeOfDay(hour: hour, minute: minute);
+      }
+    }
+    setState(() {});
+  }
+
+  Future<void> _saveTime(String key, TimeOfDay time) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('${key}_hour', time.hour);
+    await prefs.setInt('${key}_minute', time.minute);
+  }
+
+
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+          title: Text('Timers'),
+          bottom: TabBar(
+            controller: _controller,
+            tabs: [
+              Tab(text: "Bear Trap"),
+              Tab(text: "Crazy Joe"),
+              Tab(text: "Foundry"),
+              Tab(text: "Server Reset"),
+            ],
+          )),
+      body: TabBarView(
+        controller: _controller,
+        children: [
+          timerTab("Bear Trap"),
+          timerTab("Crazy Joe"),
+          timerTab("Foundry"),
+          serverResetTab(),
+        ],
+      ),
+    );
+  }
+
+  Widget timerTab(String title) {
+    final selectedTime = savedTimes[title];
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          ElevatedButton(
+            child: Text('Pick UTC Time'),
+            onPressed: () async {
+              final picked = await showTimePicker(
+                context: context,
+                initialTime: selectedTime ?? TimeOfDay.now(),
+              );
+              if (picked != null) {
+                setState(() => savedTimes[title] = picked);
+                scheduleEvent(title, picked);
+              }
+            },
+          ),
+          if (selectedTime != null)
+            Text("Set for UTC: ${selectedTime.format(context)}"),
+        ],
+      ),
+    );
+  }
+
+  Widget serverResetTab() {
+    return Center(
+      child: CheckboxListTile(
+        title: Text("Notify at 23:55 UTC daily"),
+        value: serverResetEnabled,
+        onChanged: (val) {
+          setState(() => serverResetEnabled = val!);
+          if (val == true) {
+            final now = DateTime.now().toUtc();
+            final resetTime =
+                DateTime.utc(now.year, now.month, now.day, 23, 55);
+            NotificationService.scheduleNotification(
+                999, "Server Reset", resetTime);
+          }
+        },
+      ),
+    );
+  }
+}

@@ -31,6 +31,35 @@
 
   <title>surivalplanner_website</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Firebase Analytics (web) -->
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js";
+
+    // Your web app's Firebase configuration
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+    const firebaseConfig = {
+      apiKey: "AIzaSyCTWaKnAsLv4-M8ljU22JNldu10UpgdVqo",
+      authDomain: "survivalplanner-8f125.firebaseapp.com",
+      projectId: "survivalplanner-8f125",
+      storageBucket: "survivalplanner-8f125.firebasestorage.app",
+      messagingSenderId: "258192286365",
+      appId: "1:258192286365:web:30dc3d7d1064bc848bea74",
+      measurementId: "G-K9KRP4WPG4"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    // Initialize Analytics only in environments that support it (e.g., not in some embedded browsers)
+    try {
+      getAnalytics(app);
+    } catch (e) {
+      // Silently ignore if Analytics isn't available
+      // console.debug('Analytics init skipped:', e);
+    }
+  </script>
 </head>
 <body>
   <!-- Simple splash while Flutter loads -->
@@ -46,7 +75,7 @@
   </style>
   <div id="splash" class="splash-container">
     <div class="splash-inner">
-      <img class="splash-logo" src="assets/logo.old.png" alt="Survival Planner logo" />
+  <img class="splash-logo" src="assets/logo.png" alt="Survival Planner logo" />
       <div class="splash-title">Loading Survival Planner…</div>
       <div class="splash-sub">Preparing your experience</div>
     </div>

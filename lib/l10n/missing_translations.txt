@@ -1,0 +1,37 @@
+{
+  "de": [
+    "essenceStoneCalculator",
+    "chiefCharm",
+    "eventPointCalculator",
+    "chiefGear",
+    "fireCrystalShard",
+    "furnaceBuildingCalculator"
+  ],
+
+  "fr": [
+    "essenceStoneCalculator",
+    "chiefCharm",
+    "eventPointCalculator",
+    "chiefGear",
+    "fireCrystalShard",
+    "furnaceBuildingCalculator"
+  ],
+
+  "id": [
+    "essenceStoneCalculator",
+    "chiefCharm",
+    "eventPointCalculator",
+    "chiefGear",
+    "fireCrystalShard",
+    "furnaceBuildingCalculator"
+  ],
+
+  "ja": [
+    "essenceStoneCalculator",
+    "chiefCharm",
+    "eventPointCalculator",
+    "chiefGear",
+    "fireCrystalShard",
+    "furnaceBuildingCalculator"
+  ]
+}
