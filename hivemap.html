@@ -1,25 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Load the compiled Flutter app assets from /web/ -->
+  <base href="/web/">
   <meta charset="UTF-8" />
-  <meta http-equiv="refresh" content="0; url=/web/index.html?go=hivemap" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Hive Map Editor</title>
-  <link rel="canonical" href="/web/index.html#/hivemap" />
+  <link rel="icon" type="image/png" href="assets/icon_logo.png" />
   <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#0f172a;color:#e5e7eb}
-    .card{padding:18px 22px;border-radius:14px;background:#111827;box-shadow:0 10px 30px rgba(0,0,0,.35)}
-    a{color:#60a5fa}
+    /* Minimal splash while Flutter boots */
+    html,body{height:100%;margin:0}
+    .splash-container{position:fixed;inset:0;display:grid;place-items:center;background:linear-gradient(135deg,#0f172a 0%,#1f2937 100%)}
+    .splash-inner{ text-align:center; color:#e5e7eb; font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif }
+    .splash-logo{ width:min(240px,60vw); height:auto; filter:drop-shadow(0 8px 20px rgba(0,0,0,.35)); border-radius:16px }
+    .splash-title{ margin-top:14px; font-size:clamp(18px,3.2vw,24px) }
   </style>
+  <script>
+    // Force the Flutter route to the Hive Map editor
+    (function ensureHiveMapRoute(){
+      try{
+        if(location.hash !== '#/hivemap'){
+          history.replaceState(null,'', location.origin + location.pathname + '#/hivemap');
+        }
+      }catch(e){}
+    })();
+  </script>
 </head>
 <body>
-  <div class="card">
-  <p>Redirecting to Hive Map Editor… If you are not redirected, <a href="/web/index.html?go=hivemap">click here</a>.</p>
+  <div id="splash" class="splash-container">
+    <div class="splash-inner">
+      <img class="splash-logo" src="assets/logo.png" alt="Survival Planner logo" />
+      <div class="splash-title">Loading Hive Map Editor…</div>
+    </div>
   </div>
+
+  <!-- Load Flutter app from /web/ using base href above -->
+  <script src="flutter_bootstrap.js" async></script>
   <script>
-    (function(){
-      try{ window.location.replace('/web/index.html?go=hivemap'); }catch(e){ /* fallback to meta refresh */ }
-    })();
+    // Hide the splash once Flutter renders its first frame
+    window.addEventListener('flutter-first-frame', function(){
+      var el = document.getElementById('splash');
+      if(el) el.style.display='none';
+    });
   </script>
 </body>
 </html>
