@@ -47,8 +47,15 @@
   // 2) Normalize the hash to the expected file hint for this dedicated app
     (function normalizeHash(){
       try {
-        if (!/^#file:/i.test(window.location.hash)) {
-          window.location.hash = '#file:main.dart';
+        const h = window.location.hash || '';
+        // Accept short alias and rewrite to the canonical editor file anchor
+        if (/^#file:hivemap$/i.test(h)) {
+          window.location.hash = '#file:hivemap_editor.dart';
+          return;
+        }
+        // Default to the editor file anchor if none provided
+        if (!/^#file:/i.test(h)) {
+          window.location.hash = '#file:hivemap_editor.dart';
         }
       } catch (e) { /* ignore */ }
     })();
