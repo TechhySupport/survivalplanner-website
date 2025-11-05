@@ -127,8 +127,8 @@ const List<PermanentStructure> initialPermanentStructures = [
     name: 'Sunfire Castle',
     ax: 602,
     ay: 602, // 597 + 7 for bottom-right
-    w: 7,
-    h: 7,
+    w: 6,
+    h: 6,
     exclW: 12,
     exclH: 12,
     influenceR: 20,
