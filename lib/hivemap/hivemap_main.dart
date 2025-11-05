@@ -5,6 +5,10 @@ import 'main.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Debug entry marker to distinguish dedicated HiveMap app boots
+  // This prints in the web console when the HiveMap build is launched.
+  // ignore: avoid_print
+  debugPrint('DEBUG: HIVE MAP EDITOR entry (hivemap_main.dart) starting');
 
   // Initialize Supabase with the same configuration as the main app
   await Supabase.initialize(
@@ -45,28 +49,70 @@ class HiveMapStandalone extends StatefulWidget {
 }
 
 class _HiveMapStandaloneState extends State<HiveMapStandalone> {
+  bool _debugSnackShown = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Post-frame: show a one-time debug snackbar and log to console
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_debugSnackShown && mounted) {
+        _debugSnackShown = true;
+        debugPrint('DEBUG: HIVE MAP EDITOR LOADED (lib/hivemap/main.dart)');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('DEBUG: Hive Map Editor (lib/hivemap/main.dart)'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Hive Map Editor',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-        backgroundColor: Colors.blue.shade600,
-        elevation: 0,
-        centerTitle: true,
-        systemOverlayStyle: SystemUiOverlayStyle.light,
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.blue.shade50, Colors.white],
+      body: Stack(
+        children: [
+          // App background + editor
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.blue.shade50, Colors.white],
+              ),
+            ),
+            child: const HiveMapEditor(readOnly: false),
           ),
-        ),
-        child: const HiveMapEditor(readOnly: false),
+
+          // Always-visible debug ribbon so it's obvious which app is loaded
+          Positioned(
+            top: 8,
+            left: 8,
+            child: SafeArea(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.65),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'HIVE MAP EDITOR • DEBUG',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    letterSpacing: 0.3,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
