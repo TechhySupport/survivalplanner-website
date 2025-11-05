@@ -29,7 +29,7 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="assets/icon_logo.png"/>
 
-  <title>Hive Map Editor - Survival Planner</title>
+  <title>HiveMap - Interactive Hive Editor</title>
   <link rel="manifest" href="manifest.json">
 
   <!-- Firebase Analytics (web) -->
@@ -76,60 +76,10 @@
   <div id="splash" class="splash-container">
     <div class="splash-inner">
   <img class="splash-logo" src="assets/logo.png" alt="Survival Planner logo" />
-      <div class="splash-title">Loading Hive Map Editor…</div>
+      <div class="splash-title">Loading HiveMap Editor…</div>
       <div class="splash-sub">Preparing your tactical interface</div>
     </div>
   </div>
-  <script>
-    // Force navigation to HiveMap editor when this page loads
-    (function forceHiveMapEditor(){
-      try {
-        // Clear any existing hash and set to hivemap editor
-        if (!window.location.hash || window.location.hash !== '#file:hivemap_editor.dart') {
-          window.location.hash = '#file:hivemap_editor.dart';
-        }
-      } catch (e) { /* ignore */ }
-    })();
-  </script>
-  <script>
-    // Pre-bootstrap normalization: convert query hints to hash routes for Flutter
-    (function preBootstrapRouteHint(){
-      try {
-        var sp = new URLSearchParams(window.location.search);
-        var go = sp.get('go');
-        if (go === 'hivemap') {
-          // Replace URL with VS Code-style file hash that our router recognizes; drop the query
-          var newUrl = window.location.origin + window.location.pathname + '#file:hivemap_editor.dart';
-          window.history.replaceState(null, '', newUrl);
-        }
-      } catch (e) { /* ignore */ }
-    })();
-  </script>
-  <script>
-    // Normalize legacy or incorrect hash fragments BEFORE Flutter boots
-    (function normalizeHashEarly(){
-      try {
-        var h = window.location.hash || '';
-        // Map common non-editor file anchors to the editor file anchor
-        // Matches: #file:index.html, #file:main.dart, #file:web/index.html, #file:web/main.dart, with or without leading path
-        var m = h.match(/^#file:(.*)$/i);
-        if (m) {
-          var path = m[1];
-          var lower = path.toLowerCase();
-          if (/(^|\/)index\.html$/.test(lower) || /(^|\/)main\.dart$/.test(lower)) {
-            var newUrl = window.location.origin + window.location.pathname + '#file:hivemap_editor.dart';
-            window.location.replace(newUrl);
-            return;
-          }
-        }
-        // Prefer the editor file anchor over the old hash route
-        if (h === '#/hivemap') {
-          var newUrl2 = window.location.origin + window.location.pathname + '#file:hivemap_editor.dart';
-          window.history.replaceState(null, '', newUrl2);
-        }
-      } catch (e) { /* ignore */ }
-    })();
-  </script>
   <script src="flutter_bootstrap.js" async></script>
   <script>
     // Hide the splash once Flutter attaches to the DOM
