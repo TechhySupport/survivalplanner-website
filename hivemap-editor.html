@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="surivalplanner_website">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="assets/icon_logo.png"/>
+
+  <title>Hive Map Editor - Survival Planner</title>
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Firebase Analytics (web) -->
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-analytics.js";
+
+    // Your web app's Firebase configuration
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+    const firebaseConfig = {
+      apiKey: "AIzaSyCTWaKnAsLv4-M8ljU22JNldu10UpgdVqo",
+      authDomain: "survivalplanner-8f125.firebaseapp.com",
+      projectId: "survivalplanner-8f125",
+      storageBucket: "survivalplanner-8f125.firebasestorage.app",
+      messagingSenderId: "258192286365",
+      appId: "1:258192286365:web:30dc3d7d1064bc848bea74",
+      measurementId: "G-K9KRP4WPG4"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    // Initialize Analytics only in environments that support it (e.g., not in some embedded browsers)
+    try {
+      getAnalytics(app);
+    } catch (e) {
+      // Silently ignore if Analytics isn't available
+      // console.debug('Analytics init skipped:', e);
+    }
+  </script>
+</head>
+<body>
+  <!-- Simple splash while Flutter loads -->
+  <style>
+    .splash-container { 
+      position: fixed; inset: 0; display: grid; place-items: center; 
+      background: linear-gradient(135deg, #0f172a 0%, #1f2937 100%);
+    }
+    .splash-inner { text-align: center; color: #e5e7eb; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif; }
+    .splash-logo { width: min(280px, 60vw); height: auto; filter: drop-shadow(0 8px 20px rgba(0,0,0,0.35)); border-radius: 16px; }
+    .splash-title { margin-top: 18px; font-size: clamp(18px, 3.2vw, 26px); letter-spacing: .3px; }
+    .splash-sub { margin-top: 6px; font-size: clamp(12px, 2.2vw, 14px); color: #9ca3af; }
+  </style>
+  <div id="splash" class="splash-container">
+    <div class="splash-inner">
+  <img class="splash-logo" src="assets/logo.png" alt="Survival Planner logo" />
+      <div class="splash-title">Loading Hive Map Editor…</div>
+      <div class="splash-sub">Preparing your tactical interface</div>
+    </div>
+  </div>
+  <script>
+    // Force navigation to HiveMap editor when this page loads
+    (function forceHiveMapEditor(){
+      try {
+        // Clear any existing hash and set to hivemap editor
+        if (!window.location.hash || window.location.hash !== '#file:hivemap_editor.dart') {
+          window.location.hash = '#file:hivemap_editor.dart';
+        }
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
+  <script>
+    // Pre-bootstrap normalization: convert query hints to hash routes for Flutter
+    (function preBootstrapRouteHint(){
+      try {
+        var sp = new URLSearchParams(window.location.search);
+        var go = sp.get('go');
+        if (go === 'hivemap') {
+          // Replace URL with VS Code-style file hash that our router recognizes; drop the query
+          var newUrl = window.location.origin + window.location.pathname + '#file:hivemap_editor.dart';
+          window.history.replaceState(null, '', newUrl);
+        }
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
+  <script>
+    // Normalize legacy or incorrect hash fragments BEFORE Flutter boots
+    (function normalizeHashEarly(){
+      try {
+        var h = window.location.hash || '';
+        // Map common non-editor file anchors to the editor file anchor
+        // Matches: #file:index.html, #file:main.dart, #file:web/index.html, #file:web/main.dart, with or without leading path
+        var m = h.match(/^#file:(.*)$/i);
+        if (m) {
+          var path = m[1];
+          var lower = path.toLowerCase();
+          if (/(^|\/)index\.html$/.test(lower) || /(^|\/)main\.dart$/.test(lower)) {
+            var newUrl = window.location.origin + window.location.pathname + '#file:hivemap_editor.dart';
+            window.location.replace(newUrl);
+            return;
+          }
+        }
+        // Prefer the editor file anchor over the old hash route
+        if (h === '#/hivemap') {
+          var newUrl2 = window.location.origin + window.location.pathname + '#file:hivemap_editor.dart';
+          window.history.replaceState(null, '', newUrl2);
+        }
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+  <script>
+    // Hide the splash once Flutter attaches to the DOM
+    window.addEventListener('flutter-first-frame', function () {
+      const splash = document.getElementById('splash');
+      if (splash) splash.style.display = 'none';
+    });
+  </script>
+</body>
+</html>

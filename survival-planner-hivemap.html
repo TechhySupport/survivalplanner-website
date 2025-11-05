@@ -91,7 +91,7 @@
         <div class="embed-container">
             <iframe 
                 id="hivemap-frame"
-                src="build/web/index.html" 
+                src="hivemap-editor.html" 
                 title="Survival Planner Hive Map"
                 allow="clipboard-write">
             </iframe>
@@ -108,7 +108,7 @@
             if (!document.fullscreenElement) {
                 frame.requestFullscreen().catch(err => {
                     // Fallback: open in new window
-                    window.open('build/web/index.html', '_blank', 'width=1200,height=800');
+                    window.open('hivemap-editor.html', '_blank', 'width=1200,height=800');
                 });
             } else {
                 document.exitFullscreen();
