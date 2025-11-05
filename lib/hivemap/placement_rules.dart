@@ -7,11 +7,13 @@ const int worldMax = 1199; // valid game coordinates are 0..1199 inclusive
 /// Returns footprint width and height (in tiles) for the given object type.
 ({int w, int h}) footprintFor(ObjectType type) {
   switch (type) {
+    case ObjectType.select:
+      return (w: 0, h: 0); // Select tool doesn't place objects
     case ObjectType.flag:
       return (w: 1, h: 1);
     case ObjectType.bearTrap:
-      // BT traps occupy 6x6 tiles
-      return (w: 4, h: 4);
+      // BT traps occupy 3x3 tiles
+      return (w: 3, h: 3);
     case ObjectType.hq:
       return (w: 3, h: 3);
     case ObjectType.member:

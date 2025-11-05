@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Survival Planner Hive Map</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            overflow: hidden;
+        }
+        .container {
+            width: 100vw;
+            height: 100vh;
+            background: white;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 20px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .embed-container {
+            position: relative;
+            width: 100%;
+            flex: 1;
+            border: none;
+            overflow: hidden;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+        .footer {
+            background: #2c3e50;
+            color: white;
+            padding: 8px 20px;
+            text-align: center;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .fullscreen-btn {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            background: rgba(255,255,255,0.9);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        .fullscreen-btn:hover {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Survival Planner Hive Map</h1>
+            <p>Interactive Hive Planning & Strategy Tool</p>
+        </div>
+        
+        <button class="fullscreen-btn" onclick="toggleFullscreen()">
+            Fullscreen
+        </button>
+        
+        <div class="embed-container">
+            <iframe 
+                id="hivemap-frame"
+                src="build/web/index.html" 
+                title="Survival Planner Hive Map"
+                allow="clipboard-write">
+            </iframe>
+        </div>
+        
+        <div class="footer">
+            Survival Planner Tools | Last Updated: November 2025 | Plan • Build • Dominate
+        </div>
+    </div>
+
+    <script>
+        function toggleFullscreen() {
+            const frame = document.getElementById('hivemap-frame');
+            if (!document.fullscreenElement) {
+                frame.requestFullscreen().catch(err => {
+                    // Fallback: open in new window
+                    window.open('build/web/index.html', '_blank', 'width=1200,height=800');
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // Keyboard shortcut: F11 for fullscreen
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F11') {
+                e.preventDefault();
+                toggleFullscreen();
+            }
+        });
+    </script>
+</body>
+</html>

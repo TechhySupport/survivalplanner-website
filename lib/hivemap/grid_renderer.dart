@@ -10,11 +10,17 @@ class GridRenderer extends StatelessWidget {
   final int? highlightedIndex; // optional object index to emphasize
   final bool drawGrid;
   final bool showCoordinates; // render game coord labels on tiles if true
+  final bool hideRadius; // hide radius circles for flags and HQ
+  final bool showBuildingCoordinates; // show coordinates for buildings
   final int originGameX;
   final int originGameY;
   final int?
   selectedTileGameX; // selected tile (game coord) for crosshair/highlight
   final int? selectedTileGameY;
+  final int? hoverGameX; // hover preview coordinates
+  final int? hoverGameY;
+  final ObjectType? hoverObjectType; // type of object being hovered for preview
+  final bool showCrosshair; // whether to show crosshair for placement
 
   static const double tileW = 60; // isometric diamond width
   static const double tileH = 30; // isometric diamond height
@@ -31,8 +37,14 @@ class GridRenderer extends StatelessWidget {
     this.highlightedIndex,
     this.drawGrid = true,
     this.showCoordinates = false,
+    this.hideRadius = false,
+    this.showBuildingCoordinates = false,
     this.selectedTileGameX,
     this.selectedTileGameY,
+    this.hoverGameX,
+    this.hoverGameY,
+    this.hoverObjectType,
+    this.showCrosshair = false,
   });
 
   // Total bounding size for an isometric grid rectangle
@@ -54,11 +66,17 @@ class GridRenderer extends StatelessWidget {
           highlightedIndex: highlightedIndex,
           drawGrid: drawGrid,
           showCoordinates: showCoordinates,
+          hideRadius: hideRadius,
+          showBuildingCoordinates: showBuildingCoordinates,
           originX: originX,
           originGameX: originGameX,
           originGameY: originGameY,
           selectedTileGameX: selectedTileGameX,
           selectedTileGameY: selectedTileGameY,
+          hoverGameX: hoverGameX,
+          hoverGameY: hoverGameY,
+          hoverObjectType: hoverObjectType,
+          showCrosshair: showCrosshair,
         ),
       ),
     );
@@ -72,11 +90,17 @@ class _GridPainter extends CustomPainter {
   final int? highlightedIndex;
   final bool drawGrid;
   final bool showCoordinates;
+  final bool hideRadius;
+  final bool showBuildingCoordinates;
   final double originX;
   final int originGameX;
   final int originGameY;
   final int? selectedTileGameX;
   final int? selectedTileGameY;
+  final int? hoverGameX;
+  final int? hoverGameY;
+  final ObjectType? hoverObjectType;
+  final bool showCrosshair;
 
   static const double tileH = GridRenderer.tileH;
   static const double halfW = GridRenderer.halfW;
@@ -89,33 +113,63 @@ class _GridPainter extends CustomPainter {
     required this.highlightedIndex,
     required this.drawGrid,
     required this.showCoordinates,
+    required this.hideRadius,
+    required this.showBuildingCoordinates,
     required this.originX,
     required this.originGameX,
     required this.originGameY,
     required this.selectedTileGameX,
     required this.selectedTileGameY,
+    required this.hoverGameX,
+    required this.hoverGameY,
+    required this.hoverObjectType,
+    required this.showCrosshair,
   });
 
   // Map an object to its short label
   String _labelFor(GridObject obj) {
     switch (obj.type) {
+      case ObjectType.select:
+        return ''; // Select tool doesn't have objects to label
       case ObjectType.flag:
         return 'F';
       case ObjectType.bearTrap:
         // Expect obj.name like BT1/BT2/BT3; fallback to BT
-        return (obj.name.isNotEmpty) ? obj.name : 'BT';
+        String label = (obj.name.isNotEmpty) ? obj.name : 'BT';
+        if (showBuildingCoordinates) {
+          label += '\ny=${obj.gameY} x=${obj.gameX}';
+        }
+        return label;
       case ObjectType.hq:
-        return 'Bq';
+        String label = 'HQ';
+        if (showBuildingCoordinates) {
+          label += '\ny=${obj.gameY} x=${obj.gameX}';
+        }
+        return label;
       case ObjectType.member:
-        // For members, show the assigned memberName if available; otherwise compact MBx
-        if ((obj.memberName ?? '').isNotEmpty) return obj.memberName!;
-        if (obj.name.contains('BT1') || (obj.memberGroup ?? '').contains('BT1'))
-          return 'MB1';
-        if (obj.name.contains('BT2') || (obj.memberGroup ?? '').contains('BT2'))
-          return 'MB2';
-        if (obj.name.contains('BT3') || (obj.memberGroup ?? '').contains('BT3'))
-          return 'MB3';
-        return 'MB';
+        // For members, show the assigned memberName if available; otherwise show rank
+        String label = '';
+        if ((obj.memberName ?? '').isNotEmpty) {
+          label = obj.memberName!;
+        } else if (obj.rank != null) {
+          label = 'Rank ${obj.rank}';
+        } else if (obj.name.contains('BT1') ||
+            (obj.memberGroup ?? '').contains('BT1')) {
+          label = 'MB1';
+        } else if (obj.name.contains('BT2') ||
+            (obj.memberGroup ?? '').contains('BT2')) {
+          label = 'MB2';
+        } else if (obj.name.contains('BT3') ||
+            (obj.memberGroup ?? '').contains('BT3')) {
+          label = 'MB3';
+        } else {
+          label = 'MB';
+        }
+
+        if (showBuildingCoordinates) {
+          label += '\ny=${obj.gameY} x=${obj.gameX}';
+        }
+        return label;
       case ObjectType.mountain:
         return 'M';
       case ObjectType.lake:
@@ -244,6 +298,8 @@ class _GridPainter extends CustomPainter {
 
   Color _colorForObject(GridObject obj, bool isHighlighted) {
     switch (obj.type) {
+      case ObjectType.select:
+        return Colors.transparent; // Select tool doesn't have objects to color
       case ObjectType.flag:
         return Colors.indigoAccent;
       case ObjectType.hq:
@@ -381,9 +437,14 @@ class _GridPainter extends CustomPainter {
       if (atx >= 0 && aty >= 0 && atx < gridW && aty < gridH) {
         if (obj.type == ObjectType.member) {
           final grp = _btGroupFor(obj) ?? '';
-          final display = (obj.memberName ?? '').isNotEmpty
-              ? obj.memberName!
-              : _labelFor(obj);
+          String display;
+          if ((obj.memberName ?? '').isNotEmpty) {
+            display = obj.memberName!;
+          } else if (obj.rank != null) {
+            display = 'Rank ${obj.rank}';
+          } else {
+            display = _labelFor(obj);
+          }
           _drawMemberLabel(canvas, atx, aty, display, grp);
         } else {
           _drawLabel(
@@ -401,7 +462,7 @@ class _GridPainter extends CustomPainter {
       }
 
       // If it's a Flag, also draw a 7x7 area highlight centered on the flag
-      if (obj.type == ObjectType.flag) {
+      if (obj.type == ObjectType.flag && !hideRadius) {
         // 7x7 area => radius 3 in both directions around the center cell
         const r = 3;
         final centerGX = obj.gameX;
@@ -420,15 +481,63 @@ class _GridPainter extends CustomPainter {
           }
         }
       }
+
+      // If it's an HQ, also draw a 15x15 area highlight centered on the HQ
+      if (obj.type == ObjectType.hq && !hideRadius) {
+        // 15x15 area => radius 7 in both directions around the center cell
+        const r = 7;
+        final centerGX = obj.gameX;
+        final centerGY = obj.gameY;
+        final areaFill = Colors.redAccent.withOpacity(0.08);
+        final areaStroke = Colors.red.withOpacity(0.15);
+        for (int ddy = -r; ddy <= r; ddy++) {
+          for (int ddx = -r; ddx <= r; ddx++) {
+            final ax = centerGX + ddx;
+            final ay = centerGY + ddy;
+            // Convert to viewport indices
+            final vx = ax - originGameX;
+            final vy = ay - originGameY;
+            if (vx < 0 || vy < 0 || vx >= gridW || vy >= gridH) continue;
+            _drawTile(canvas, vx, vy, fill: areaFill, stroke: areaStroke);
+          }
+        }
+      }
     }
 
-    // Crosshair and selected tile highlight
+    // Hover shadow preview
+    if (hoverGameX != null && hoverGameY != null && hoverObjectType != null) {
+      final centerGX = hoverGameX!;
+      final centerGY = hoverGameY!;
+      final type = hoverObjectType!;
+
+      // Get the actual footprint for the object type
+      final footprint = footprintFor(type);
+      final topLeft = centerToTopLeft(type, centerGX, centerGY);
+
+      final areaFill = type == ObjectType.member
+          ? Colors.green.withOpacity(0.15)
+          : Colors.blue.withOpacity(0.15);
+      final areaStroke = type == ObjectType.member
+          ? Colors.green.withOpacity(0.4)
+          : Colors.blue.withOpacity(0.4);
+
+      // Draw all tiles in the footprint
+      for (int dy = 0; dy < footprint.h; dy++) {
+        for (int dx = 0; dx < footprint.w; dx++) {
+          final ax = topLeft.x + dx;
+          final ay = topLeft.y + dy;
+          // Convert to viewport indices
+          final vx = ax - originGameX;
+          final vy = ay - originGameY;
+          if (vx < 0 || vy < 0 || vx >= gridW || vy >= gridH) continue;
+          _drawTile(canvas, vx, vy, fill: areaFill, stroke: areaStroke);
+        }
+      }
+    } // Crosshair and selected tile highlight
     if (selectedTileGameX != null && selectedTileGameY != null) {
       final tx = selectedTileGameX! - originGameX;
       final ty = selectedTileGameY! - originGameY;
       if (tx >= 0 && ty >= 0 && tx < gridW && ty < gridH) {
-        final top = _tileTop(tx, ty);
-        final center = top.translate(0, tileH * 0.5);
         // Highlight selected tile
         _drawTile(
           canvas,
@@ -437,19 +546,28 @@ class _GridPainter extends CustomPainter {
           fill: Colors.yellow.withOpacity(0.18),
           stroke: Colors.orange.withOpacity(0.8),
         );
-        if (showCoordinates) {
-          // Crosshair lines across viewport
+        if (showCoordinates && showCrosshair) {
+          // Crosshair lines following isometric grid orientation - full grid
           final paint = Paint()
-            ..color = Colors.black.withOpacity(0.25)
-            ..strokeWidth = 1;
+            ..color = Colors.red.withOpacity(0.6)
+            ..strokeWidth = 4;
+
+          // Calculate the full grid bounds for crosshair
+          final gridCenterX = originX + (gridW / 2 - gridH / 2) * halfW;
+          final gridCenterY = (gridW / 2 + gridH / 2) * halfH;
+          final gridExtent = (gridW + gridH) * halfW;
+
+          // Diagonal line from top-left to bottom-right (grid-aligned)
           canvas.drawLine(
-            Offset(0, center.dy),
-            Offset(size.width, center.dy),
+            Offset(gridCenterX - gridExtent, gridCenterY - gridExtent / 2),
+            Offset(gridCenterX + gridExtent, gridCenterY + gridExtent / 2),
             paint,
           );
+
+          // Diagonal line from top-right to bottom-left (grid-aligned)
           canvas.drawLine(
-            Offset(center.dx, 0),
-            Offset(center.dx, size.height),
+            Offset(gridCenterX + gridExtent, gridCenterY - gridExtent / 2),
+            Offset(gridCenterX - gridExtent, gridCenterY + gridExtent / 2),
             paint,
           );
         }
@@ -463,12 +581,16 @@ class _GridPainter extends CustomPainter {
         gridH != oldDelegate.gridH ||
         drawGrid != oldDelegate.drawGrid ||
         showCoordinates != oldDelegate.showCoordinates ||
+        showBuildingCoordinates != oldDelegate.showBuildingCoordinates ||
         highlightedIndex != oldDelegate.highlightedIndex ||
         objects != oldDelegate.objects ||
         originX != oldDelegate.originX ||
         originGameX != oldDelegate.originGameX ||
         originGameY != oldDelegate.originGameY ||
         selectedTileGameX != oldDelegate.selectedTileGameX ||
-        selectedTileGameY != oldDelegate.selectedTileGameY;
+        selectedTileGameY != oldDelegate.selectedTileGameY ||
+        hoverGameX != oldDelegate.hoverGameX ||
+        hoverGameY != oldDelegate.hoverGameY ||
+        hoverObjectType != oldDelegate.hoverObjectType;
   }
 }

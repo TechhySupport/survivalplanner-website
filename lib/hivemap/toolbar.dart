@@ -20,6 +20,7 @@ class HiveToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
+      (ObjectType.select, Icons.pan_tool, 'Select'),
       (ObjectType.flag, Icons.flag, 'Flag'),
       (ObjectType.bearTrap, Icons.shield, 'BT1'),
       (ObjectType.bearTrap, Icons.shield_outlined, 'BT2'),

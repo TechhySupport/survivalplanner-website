@@ -17,6 +17,7 @@ import 'package:excel/excel.dart' as ex;
 import 'toolbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/map_service.dart';
+import '../services/loginscreen.dart';
 import 'package:image/image.dart' as img;
 
 // Lightweight metadata for saved maps (local or cloud)
@@ -75,7 +76,7 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
   int _originGameY = 0;
 
   final List<GridObject> _objects = <GridObject>[];
-  ToolSelection _selected = const ToolSelection(ObjectType.flag, 'Flag');
+  ToolSelection _selected = const ToolSelection(ObjectType.select, 'Select');
   // Members data store for list/import
   final List<MemberRecord> _members = <MemberRecord>[];
 
@@ -83,8 +84,50 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
 
   // Coordinates overlay and selection
   bool _showCoordinates = false;
+  bool _showBuildingCoordinates = false;
+  bool _hideRadius = false;
   int? _selectedTileX;
   int? _selectedTileY;
+
+  // Member highlighting and animation
+  Timer? _memberHighlightTimer;
+  int? _highlightMemberIndex;
+  int _highlightAnimationStep = 0;
+
+  // BT rank tracking for auto-increment
+  final Map<String, int> _lastBTRank = {'BT1': 0, 'BT2': 0, 'BT3': 0};
+
+  // Attendance feature toggle
+  bool _attendanceEnabled = false;
+
+  // Hover preview state
+  int? _hoverGameX;
+  int? _hoverGameY;
+
+  // Drag drawing state for lakes/mountains
+  bool _isDragging = false;
+  final Set<Point<int>> _draggedTiles = <Point<int>>{};
+
+  // Drag move state for objects
+  bool _isDragMoving = false;
+  int? _dragMoveObjectIndex;
+
+  // Map view lock state
+  bool _isMapViewLocked = false;
+
+  // First-time user setup state
+  bool _isFirstTimeUser = true;
+  bool _showSetupFlow = false;
+
+  // Setup flow state
+  Map<String, Map<String, int?>> _setupBTCoordinates = {
+    'BT1': {'x': null, 'y': null},
+    'BT2': {'x': null, 'y': null},
+    'BT3': {'x': null, 'y': null},
+  };
+  bool _useBT3 = false;
+  int _setupStep =
+      0; // 0: welcome, 1: BT1, 2: BT2, 3: BT3?, 4: members, 5: complete
 
   // Context menu state
   Offset? _menuPosition; // viewport-local position
@@ -129,6 +172,163 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
     // Use a JS-safe positive max (avoid 1<<32 which overflows to 0 in JS)
     const int maxRand = 0x3fffffff; // 2^30 - 1 (extra safety for web)
     return '${DateTime.now().millisecondsSinceEpoch}_${r.nextInt(maxRand)}';
+  }
+
+  // Format power with commas
+  String _formatPower(int power) {
+    return power.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]},',
+    );
+  }
+
+  // Find member coordinates by rank and group
+  String _getMemberCoordinates(String group, int rank) {
+    for (final obj in _objects) {
+      if (obj.type == ObjectType.member &&
+          obj.memberGroup == group &&
+          obj.rank == rank) {
+        return '${obj.gameX}, ${obj.gameY}';
+      }
+    }
+    return 'Not placed';
+  }
+
+  // Navigate to member and highlight them
+  void _navigateToMember(String group, int rank) {
+    for (int i = 0; i < _objects.length; i++) {
+      final obj = _objects[i];
+      if (obj.type == ObjectType.member &&
+          obj.memberGroup == group &&
+          obj.rank == rank) {
+        // Center view on member
+        setState(() {
+          _originGameX = (obj.gameX - _viewportSize ~/ 2).clamp(
+            0,
+            1200 - _viewportSize,
+          );
+          _originGameY = (obj.gameY - _viewportSize ~/ 2).clamp(
+            0,
+            1200 - _viewportSize,
+          );
+          _highlightMemberIndex = i;
+          _highlightAnimationStep = 0;
+        });
+
+        // Start flashing animation
+        _memberHighlightTimer?.cancel();
+        _memberHighlightTimer = Timer.periodic(
+          const Duration(milliseconds: 300),
+          (timer) {
+            setState(() {
+              _highlightAnimationStep = (_highlightAnimationStep + 1) % 6;
+            });
+            if (_highlightAnimationStep == 0 && timer.tick >= 6) {
+              timer.cancel();
+              setState(() {
+                _highlightMemberIndex = null;
+              });
+            }
+          },
+        );
+        break;
+      }
+    }
+  }
+
+  // Show save options dialog
+  Future<void> _showSaveDialog() async {
+    final user = Supabase.instance.client.auth.currentUser;
+
+    if (user != null) {
+      // User is logged in, save to cloud
+      await _saveMap();
+      return;
+    }
+
+    // User not logged in, show options
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Save Map'),
+        content: const Text('How would you like to save your map?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'local'),
+            child: const Text('Save Locally'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'cancel'),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, 'cloud'),
+            child: const Text('Login & Save to Cloud'),
+          ),
+        ],
+      ),
+    );
+
+    switch (result) {
+      case 'local':
+        await _saveMapLocal();
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Map saved locally')));
+        }
+        break;
+      case 'cloud':
+        final loginResult = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+        if (loginResult == true) {
+          // User successfully logged in, now save to cloud
+          await _saveMap();
+        }
+        break;
+      case 'cancel':
+      default:
+        // Do nothing
+        break;
+    }
+  }
+
+  // Edit map name
+  Future<void> _editMapName() async {
+    final controller = TextEditingController(text: _currentMapName);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Map Name'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Map Name',
+            border: OutlineInputBorder(),
+          ),
+          onSubmitted: (value) => Navigator.pop(ctx, value.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result.isNotEmpty && result != _currentMapName) {
+      setState(() {
+        _currentMapName = result;
+      });
+      await _saveMap();
+    }
   }
 
   Future<List<_MapMeta>> _loadLocalMapsMeta() async {
@@ -293,6 +493,9 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
     // Also try loading cloud-saved single map (one per user)
     loadHiveMap();
 
+    // Check if this is a first-time user
+    _checkFirstTimeUser();
+
     // Re-attempt cloud load/save once auth session becomes available/refreshed
     _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       final evt = data.event;
@@ -315,6 +518,49 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
   }
 
   void _handleTap(TapUpDetails details) {
+    // Check if we're in drag move mode first
+    if (_isDragMoving && _dragMoveObjectIndex != null) {
+      final gameCoords = _convertTapToGameCoords(details.globalPosition);
+      if (gameCoords != null) {
+        final idx = _dragMoveObjectIndex!;
+        final obj = _objects[idx];
+
+        // Check if we can place the object at this position
+        final ok = canPlaceCenter(
+          existing: _objects,
+          type: obj.type,
+          centerX: gameCoords.x,
+          centerY: gameCoords.y,
+          ignoreIndex: idx,
+        );
+
+        if (ok) {
+          _pushUndoState();
+          setState(() {
+            _objects[idx] = obj.copyWith(
+              gameX: gameCoords.x,
+              gameY: gameCoords.y,
+            );
+            _highlightedIndex = idx;
+            _isDragMoving = false;
+            _dragMoveObjectIndex = null;
+          });
+          _saveMap();
+          _setViewportAround(gameCoords.x, gameCoords.y);
+          _centerOnViewportCenter();
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Cannot move here (overlap or out of bounds)'),
+              ),
+            );
+          }
+        }
+      }
+      return;
+    }
+
     // Convert to scene coordinates
     final sceneCtx = _sceneKey.currentContext;
     if (sceneCtx == null) return; // Scene not ready
@@ -359,6 +605,31 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
     }
     // Place currently selected tool on tap (no coordinate dialog)
     final t = _selected.type;
+
+    // Don't place objects when select tool is active
+    if (t == ObjectType.select) {
+      return;
+    }
+
+    // Check if trying to place a BT when one already exists
+    if (t == ObjectType.bearTrap) {
+      final existingBTs = _objects.where(
+        (obj) => obj.type == ObjectType.bearTrap,
+      );
+      for (final bt in existingBTs) {
+        if (bt.name == _selected.name) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${_selected.name} already exists on the map'),
+              ),
+            );
+          }
+          return;
+        }
+      }
+    }
+
     final ok = canPlaceCenter(
       existing: _objects,
       type: t,
@@ -381,13 +652,60 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
     _pushUndoState();
     setState(() {
       String? mGroup;
+      int? rank;
+      String? memberName;
       if (t == ObjectType.member) {
-        if (_selected.name.contains('BT1'))
+        if (_selected.name.contains('BT1')) {
           mGroup = 'BT1';
-        else if (_selected.name.contains('BT2'))
+          if (_lastBTRank['BT1']! >= 100) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Cannot add more than 100 BT1 members'),
+                ),
+              );
+            }
+            return;
+          }
+          _lastBTRank['BT1'] = _lastBTRank['BT1']! + 1;
+          rank = _lastBTRank['BT1'];
+        } else if (_selected.name.contains('BT2')) {
           mGroup = 'BT2';
-        else if (_selected.name.contains('BT3'))
+          if (_lastBTRank['BT2']! >= 100) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Cannot add more than 100 BT2 members'),
+                ),
+              );
+            }
+            return;
+          }
+          _lastBTRank['BT2'] = _lastBTRank['BT2']! + 1;
+          rank = _lastBTRank['BT2'];
+        } else if (_selected.name.contains('BT3')) {
           mGroup = 'BT3';
+          if (_lastBTRank['BT3']! >= 100) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Cannot add more than 100 BT3 members'),
+                ),
+              );
+            }
+            return;
+          }
+          _lastBTRank['BT3'] = _lastBTRank['BT3']! + 1;
+          rank = _lastBTRank['BT3'];
+        }
+
+        // Auto-resolve member name from rank if available
+        if (mGroup != null && rank != null) {
+          final rankedMembers = _rankedMembersByGroup(mGroup);
+          if (rank <= rankedMembers.length) {
+            memberName = rankedMembers[rank - 1].name;
+          }
+        }
       }
       _objects.add(
         GridObject(
@@ -396,6 +714,8 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
           gameX: gameGX,
           gameY: gameGY,
           memberGroup: mGroup,
+          rank: rank,
+          memberName: memberName,
         ),
       );
       _highlightedIndex = _objects.length - 1;
@@ -403,17 +723,214 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
       _menuObjectIndex = null;
       _selectedTileX = gameGX;
       _selectedTileY = gameGY;
+
+      // If placing a BT, center the grid on it
+      if (t == ObjectType.bearTrap) {
+        _setViewportAround(gameGX, gameGY);
+        _centerOnViewportCenter();
+      }
     });
     _saveMap();
-    if (mounted) {
-      final extra = t == ObjectType.flag ? ' • 7x7 radius' : '';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(milliseconds: 1400),
-          content: Text('${_selected.name} placed at ($gameGX,$gameGY)$extra'),
-        ),
-      );
+  }
+
+  void _handleHover(PointerHoverEvent event) {
+    // Convert to scene coordinates
+    final sceneCtx = _sceneKey.currentContext;
+    if (sceneCtx == null) return;
+    final renderObj = sceneCtx.findRenderObject();
+    if (renderObj is! RenderBox) return;
+    final local = renderObj.globalToLocal(event.position);
+    final inv = _controller.value.clone()..invert();
+    final scene = MatrixUtils.transformPoint(inv, local);
+
+    // Scene -> grid indices
+    const halfW = GridRenderer.halfW;
+    const halfH = GridRenderer.halfH;
+    final originX = _viewportSize * halfW;
+    final nx = (scene.dx - originX) / halfW;
+    final ny = (scene.dy) / halfH;
+    final gx = ((ny + nx) / 2).floor();
+    final gy = ((ny - nx) / 2).floor();
+    if (gx < 0 || gy < 0 || gx >= _viewportSize || gy >= _viewportSize) {
+      _clearHover();
+      return;
     }
+
+    // Grid indices -> game coordinates
+    final gameGX = _originGameX + gx;
+    final gameGY = _originGameY + gy;
+
+    setState(() {
+      _hoverGameX = gameGX;
+      _hoverGameY = gameGY;
+    });
+  }
+
+  void _clearHover() {
+    setState(() {
+      _hoverGameX = null;
+      _hoverGameY = null;
+    });
+  }
+
+  void _handlePanStart(DragStartDetails details) {
+    final type = _selected.type;
+
+    // Don't allow drag drawing when select tool is active
+    if (type == ObjectType.select) {
+      return;
+    }
+
+    // Enable drag drawing for lakes, mountains, and members
+    if (type != ObjectType.lake &&
+        type != ObjectType.mountain &&
+        type != ObjectType.member) {
+      return;
+    }
+
+    _isDragging = true;
+    _draggedTiles.clear();
+
+    // Add the starting tile
+    final coords = _convertTapToGameCoords(details.globalPosition);
+    if (coords != null) {
+      _addDragTile(coords.x, coords.y);
+    }
+  }
+
+  void _handlePanUpdate(DragUpdateDetails details) {
+    if (!_isDragging) return;
+
+    final coords = _convertTapToGameCoords(details.globalPosition);
+    if (coords != null) {
+      _addDragTile(coords.x, coords.y);
+    }
+  }
+
+  void _handlePanEnd(DragEndDetails details) {
+    if (!_isDragging) return;
+
+    _isDragging = false;
+    _finalizeDragDrawing();
+  }
+
+  ({int x, int y})? _convertTapToGameCoords(Offset globalPosition) {
+    final sceneCtx = _sceneKey.currentContext;
+    if (sceneCtx == null) return null;
+    final renderObj = sceneCtx.findRenderObject();
+    if (renderObj is! RenderBox) return null;
+    final local = renderObj.globalToLocal(globalPosition);
+    final inv = _controller.value.clone()..invert();
+    final scene = MatrixUtils.transformPoint(inv, local);
+
+    const halfW = GridRenderer.halfW;
+    const halfH = GridRenderer.halfH;
+    final originX = _viewportSize * halfW;
+    final nx = (scene.dx - originX) / halfW;
+    final ny = (scene.dy) / halfH;
+    final gx = ((ny + nx) / 2).floor();
+    final gy = ((ny - nx) / 2).floor();
+    if (gx < 0 || gy < 0 || gx >= _viewportSize || gy >= _viewportSize)
+      return null;
+
+    final gameGX = _originGameX + gx;
+    final gameGY = _originGameY + gy;
+    return (x: gameGX, y: gameGY);
+  }
+
+  void _addDragTile(int gameX, int gameY) {
+    final point = Point<int>(gameX, gameY);
+    if (_draggedTiles.contains(point)) return;
+
+    final type = _selected.type;
+    final ok = canPlaceCenter(
+      existing: _objects,
+      type: type,
+      centerX: gameX,
+      centerY: gameY,
+    );
+
+    if (ok) {
+      _draggedTiles.add(point);
+
+      String? mGroup;
+      int? rank;
+      String? memberName;
+
+      // Handle member placement with auto-incrementing ranks
+      if (type == ObjectType.member) {
+        if (_selected.name.contains('BT1')) {
+          mGroup = 'BT1';
+          if (_lastBTRank['BT1']! >= 100) {
+            return; // Skip placement if limit reached
+          }
+          _lastBTRank['BT1'] = _lastBTRank['BT1']! + 1;
+          rank = _lastBTRank['BT1'];
+        } else if (_selected.name.contains('BT2')) {
+          mGroup = 'BT2';
+          if (_lastBTRank['BT2']! >= 100) {
+            return; // Skip placement if limit reached
+          }
+          _lastBTRank['BT2'] = _lastBTRank['BT2']! + 1;
+          rank = _lastBTRank['BT2'];
+        } else if (_selected.name.contains('BT3')) {
+          mGroup = 'BT3';
+          if (_lastBTRank['BT3']! >= 100) {
+            return; // Skip placement if limit reached
+          }
+          _lastBTRank['BT3'] = _lastBTRank['BT3']! + 1;
+          rank = _lastBTRank['BT3'];
+        }
+
+        // Auto-resolve member name from rank if available
+        if (mGroup != null && rank != null) {
+          final rankedMembers = _rankedMembersByGroup(mGroup);
+          if (rank <= rankedMembers.length) {
+            memberName = rankedMembers[rank - 1].name;
+          }
+        }
+      }
+
+      // Add the object immediately for visual feedback
+      setState(() {
+        _objects.add(
+          GridObject(
+            type: type,
+            name: _selected.name,
+            gameX: gameX,
+            gameY: gameY,
+            memberGroup: mGroup,
+            rank: rank,
+            memberName: memberName,
+          ),
+        );
+      });
+    }
+  }
+
+  void _finalizeDragDrawing() {
+    if (_draggedTiles.isNotEmpty) {
+      _saveMap();
+    }
+    _draggedTiles.clear();
+  }
+
+  void _moveGrid(int deltaX, int deltaY) {
+    if (_isMapViewLocked) return; // Don't move if locked
+
+    setState(() {
+      _originGameX += deltaX;
+      _originGameY += deltaY;
+
+      // Ensure we don't go below 0
+      if (_originGameX < 0) _originGameX = 0;
+      if (_originGameY < 0) _originGameY = 0;
+
+      // Ensure we don't go beyond world bounds
+      final maxOrigin = worldMax - _viewportSize + 1;
+      if (_originGameX > maxOrigin) _originGameX = maxOrigin;
+      if (_originGameY > maxOrigin) _originGameY = maxOrigin;
+    });
   }
 
   void _openMembersListDialog() {
@@ -460,35 +977,58 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
             final members = listForFilter();
 
             return AlertDialog(
-              title: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Members'),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Members'),
+                      Row(
+                        children: [
+                          ChoiceChip(
+                            label: const Text('All'),
+                            selected: filter == 'All',
+                            onSelected: (_) =>
+                                setStateDialog(() => filter = 'All'),
+                          ),
+                          const SizedBox(width: 6),
+                          ChoiceChip(
+                            label: const Text('BT1'),
+                            selected: filter == 'BT1',
+                            onSelected: (_) =>
+                                setStateDialog(() => filter = 'BT1'),
+                          ),
+                          const SizedBox(width: 6),
+                          ChoiceChip(
+                            label: const Text('BT2'),
+                            selected: filter == 'BT2',
+                            onSelected: (_) =>
+                                setStateDialog(() => filter = 'BT2'),
+                          ),
+                          const SizedBox(width: 6),
+                          ChoiceChip(
+                            label: const Text('BT3'),
+                            selected: filter == 'BT3',
+                            onSelected: (_) =>
+                                setStateDialog(() => filter = 'BT3'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
-                      ChoiceChip(
-                        label: const Text('All'),
-                        selected: filter == 'All',
-                        onSelected: (_) => setStateDialog(() => filter = 'All'),
+                      Switch(
+                        value: _attendanceEnabled,
+                        onChanged: (value) {
+                          setState(() => _attendanceEnabled = value);
+                          setStateDialog(() {});
+                        },
                       ),
-                      const SizedBox(width: 6),
-                      ChoiceChip(
-                        label: const Text('BT1'),
-                        selected: filter == 'BT1',
-                        onSelected: (_) => setStateDialog(() => filter = 'BT1'),
-                      ),
-                      const SizedBox(width: 6),
-                      ChoiceChip(
-                        label: const Text('BT2'),
-                        selected: filter == 'BT2',
-                        onSelected: (_) => setStateDialog(() => filter = 'BT2'),
-                      ),
-                      const SizedBox(width: 6),
-                      ChoiceChip(
-                        label: const Text('BT3'),
-                        selected: filter == 'BT3',
-                        onSelected: (_) => setStateDialog(() => filter = 'BT3'),
-                      ),
+                      const SizedBox(width: 8),
+                      const Text('Enable Attendance Mode'),
                     ],
                   ),
                 ],
@@ -539,29 +1079,123 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          item.name,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w800,
+                                    child: InkWell(
+                                      onTap: () {
+                                        Navigator.pop(ctx);
+                                        _navigateToMember(item.group, rank);
+                                      },
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            item.name,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w800,
+                                              color: Colors.blue,
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '${item.group} • Power ${item.power}',
-                                          style: const TextStyle(
-                                            color: Colors.black54,
+                                          const SizedBox(height: 2),
+                                          if (_attendanceEnabled) ...[
+                                            Text(
+                                              '${item.group} • True Power: ${_formatPower(item.power)}',
+                                              style: const TextStyle(
+                                                color: Colors.black54,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                            Text(
+                                              'Total Power: ${_formatPower(item.effectivePower)} (${item.attendance}%)',
+                                              style: const TextStyle(
+                                                color: Colors.green,
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ] else
+                                            Text(
+                                              '${item.group} • Power ${_formatPower(item.power)}',
+                                              style: const TextStyle(
+                                                color: Colors.black54,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                          if (_attendanceEnabled) ...[
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                const Text(
+                                                  'Attendance: ',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: Colors.black54,
+                                                  ),
+                                                ),
+                                                Expanded(
+                                                  child: Slider(
+                                                    value: item.attendance
+                                                        .toDouble(),
+                                                    min: 0,
+                                                    max: 100,
+                                                    divisions: 20,
+                                                    label:
+                                                        '${item.attendance}%',
+                                                    onChanged: (value) {
+                                                      // Just update the visual state during dragging
+                                                      setStateDialog(() {});
+                                                    },
+                                                    onChangeEnd: (value) {
+                                                      final newAttendance =
+                                                          value.round();
+                                                      final memberIndex =
+                                                          _members.indexWhere(
+                                                            (m) =>
+                                                                m.name ==
+                                                                    item.name &&
+                                                                m.group ==
+                                                                    item.group,
+                                                          );
+                                                      if (memberIndex != -1) {
+                                                        setState(() {
+                                                          _members[memberIndex] =
+                                                              _members[memberIndex]
+                                                                  .copyWith(
+                                                                    attendance:
+                                                                        newAttendance,
+                                                                  );
+                                                        });
+                                                        setStateDialog(() {});
+                                                        _saveMembers();
+                                                      }
+                                                    },
+                                                  ),
+                                                ),
+                                                Text(
+                                                  '${item.attendance}%',
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Coordinates: ${_getMemberCoordinates(item.group, rank)}',
+                                            style: const TextStyle(
+                                              color: Colors.black45,
+                                              fontSize: 12,
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 8),
@@ -683,22 +1317,139 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
                     minScale: 0.4,
                     maxScale: 4.0,
                     constrained: false,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTapUp: widget.readOnly ? null : _handleTap,
-                      child: GridRenderer(
-                        gridW: _viewportSize,
-                        gridH: _viewportSize,
-                        objects: _objects,
-                        originGameX: _originGameX,
-                        originGameY: _originGameY,
-                        highlightedIndex: _highlightedIndex,
-                        showCoordinates: _showCoordinates,
-                        selectedTileGameX: _selectedTileX,
-                        selectedTileGameY: _selectedTileY,
+                    child: MouseRegion(
+                      onHover: widget.readOnly ? null : _handleHover,
+                      onExit: widget.readOnly ? null : (_) => _clearHover(),
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTapUp: widget.readOnly ? null : _handleTap,
+                        onPanStart: widget.readOnly ? null : _handlePanStart,
+                        onPanUpdate: widget.readOnly ? null : _handlePanUpdate,
+                        onPanEnd: widget.readOnly ? null : _handlePanEnd,
+                        child: GridRenderer(
+                          gridW: _viewportSize,
+                          gridH: _viewportSize,
+                          objects: _objects,
+                          originGameX: _originGameX,
+                          originGameY: _originGameY,
+                          highlightedIndex:
+                              _highlightedIndex ?? _highlightMemberIndex,
+                          showCoordinates: _showCoordinates,
+                          hideRadius: _hideRadius,
+                          showBuildingCoordinates: _showBuildingCoordinates,
+                          selectedTileGameX: _selectedTileX,
+                          selectedTileGameY: _selectedTileY,
+                          hoverGameX: _hoverGameX,
+                          hoverGameY: _hoverGameY,
+                          hoverObjectType:
+                              _isDragMoving && _dragMoveObjectIndex != null
+                              ? _objects[_dragMoveObjectIndex!].type
+                              : _selected.type,
+                          showCrosshair: _selected.type != ObjectType.select,
+                        ),
                       ),
                     ),
                   ),
+
+                  // Navigation arrows
+                  if (!widget.readOnly) ...[
+                    // Top arrow
+                    Positioned(
+                      top: 20,
+                      left: MediaQuery.of(context).size.width / 2 - 20,
+                      child: IconButton(
+                        onPressed: () => _moveGrid(0, -1),
+                        icon: const Icon(Icons.keyboard_arrow_up),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white.withOpacity(0.8),
+                          shape: const CircleBorder(),
+                        ),
+                      ),
+                    ),
+                    // Bottom arrow
+                    Positioned(
+                      bottom: 20,
+                      left: MediaQuery.of(context).size.width / 2 - 20,
+                      child: IconButton(
+                        onPressed: () => _moveGrid(0, 1),
+                        icon: const Icon(Icons.keyboard_arrow_down),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white.withOpacity(0.8),
+                          shape: const CircleBorder(),
+                        ),
+                      ),
+                    ),
+                    // Left arrow
+                    Positioned(
+                      top: MediaQuery.of(context).size.height / 2 - 20,
+                      left: 20,
+                      child: IconButton(
+                        onPressed: () => _moveGrid(-1, 0),
+                        icon: const Icon(Icons.keyboard_arrow_left),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white.withOpacity(0.8),
+                          shape: const CircleBorder(),
+                        ),
+                      ),
+                    ),
+                    // Center coordinates display
+                    Positioned(
+                      top: MediaQuery.of(context).size.height / 2 + 30,
+                      left: 20,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.7),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'Center: (${_originGameX + _viewportSize ~/ 2}, ${_originGameY + _viewportSize ~/ 2})',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Map view lock button
+                    Positioned(
+                      top: MediaQuery.of(context).size.height / 2 + 60,
+                      left: 20,
+                      child: IconButton(
+                        onPressed: () {
+                          setState(() {
+                            _isMapViewLocked = !_isMapViewLocked;
+                          });
+                        },
+                        icon: Icon(
+                          _isMapViewLocked ? Icons.lock : Icons.lock_open,
+                        ),
+                        style: IconButton.styleFrom(
+                          backgroundColor: _isMapViewLocked
+                              ? Colors.red.withOpacity(0.8)
+                              : Colors.white.withOpacity(0.8),
+                          shape: const CircleBorder(),
+                        ),
+                      ),
+                    ),
+                    // Right arrow
+                    Positioned(
+                      top: MediaQuery.of(context).size.height / 2 - 20,
+                      right: 20,
+                      child: IconButton(
+                        onPressed: () => _moveGrid(1, 0),
+                        icon: const Icon(Icons.keyboard_arrow_right),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white.withOpacity(0.8),
+                          shape: const CircleBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
                   if (_menuPosition != null &&
                       _menuObjectIndex != null &&
                       !widget.readOnly)
@@ -707,7 +1458,16 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
                       top: _menuPosition!.dy,
                       child: _ObjectMenu(
                         object: _objects[_menuObjectIndex!],
-                        onMove: () async {
+                        onDragMove: () {
+                          // Enable drag move mode
+                          setState(() {
+                            _isDragMoving = true;
+                            _dragMoveObjectIndex = _menuObjectIndex;
+                            _menuPosition = null;
+                            _menuObjectIndex = null;
+                          });
+                        },
+                        onCoordinateMove: () async {
                           final idx = _menuObjectIndex!;
                           final obj = _objects[idx];
                           _menuPosition = null;
@@ -794,8 +1554,12 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
                           highlightedIndex: null,
                           drawGrid: _exportShowGrid,
                           showCoordinates: _exportShowCoords,
+                          hideRadius: _hideRadius,
+                          showBuildingCoordinates:
+                              false, // Don't show building coords in export
                           selectedTileGameX: null,
                           selectedTileGameY: null,
+                          showCrosshair: false, // No crosshair in export
                         ),
                       ),
                     ),
@@ -805,6 +1569,17 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
           ),
         ),
         const Divider(height: 1),
+        // Add toolbar for object selection
+        if (!widget.readOnly)
+          HiveToolbar(
+            selected: _selected,
+            onSelected: (selection) {
+              setState(() {
+                _selected = selection;
+              });
+            },
+          ),
+        if (!widget.readOnly) const Divider(height: 1),
         _buildBottomControls(),
       ],
     );
@@ -840,6 +1615,9 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
                         case 'Export as JPG':
                           await _openExportDialog();
                           break;
+                        case 'Reset Setup':
+                          await _resetFirstTimeSetup();
+                          break;
                       }
                     },
                     itemBuilder: (ctx) => const [
@@ -848,6 +1626,11 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
                       PopupMenuItem(
                         value: 'Export as JPG',
                         child: Text('Export as JPG'),
+                      ),
+                      PopupMenuDivider(),
+                      PopupMenuItem(
+                        value: 'Reset Setup',
+                        child: Text('Reset First-Time Setup'),
                       ),
                     ],
                   ),
@@ -881,13 +1664,13 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
                           _selectTool(ObjectType.hq, 'HQ');
                           break;
                         case 'MB1':
-                          _selectTool(ObjectType.member, 'BT1 Member');
+                          _selectMemberTool('BT1');
                           break;
                         case 'MB2':
-                          _selectTool(ObjectType.member, 'BT2 Member');
+                          _selectMemberTool('BT2');
                           break;
                         case 'MB3':
-                          _selectTool(ObjectType.member, 'BT3 Member');
+                          _selectMemberTool('BT3');
                           break;
                         case 'Mountain':
                           _selectTool(ObjectType.mountain, 'Mountain');
@@ -973,14 +1756,27 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
                     label: const Text('Redo'),
                   ),
                 const Spacer(),
-                Text(
-                  'Map: $_currentMapName',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                InkWell(
+                  onTap: () => _editMapName(),
+                  borderRadius: BorderRadius.circular(4),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    child: Text(
+                      'Map: $_currentMapName',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blue,
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 if (!widget.readOnly)
                   OutlinedButton.icon(
-                    onPressed: _isSyncing ? null : _saveMap,
+                    onPressed: _isSyncing ? null : _showSaveDialog,
                     icon: _isSyncing
                         ? const SizedBox(
                             width: 14,
@@ -1054,6 +1850,19 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
     );
   }
 
+  // Special method for selecting member tools with rank management
+  Future<void> _selectMemberTool(String group) async {
+    if (_lastBTRank[group] == 0) {
+      // First time placing this group, ask for starting rank
+      final rank = await _promptRank(initial: 1);
+      if (rank == null) return;
+      _lastBTRank[group] =
+          rank - 1; // Set to one less so first placement gets the entered rank
+    }
+
+    _selectTool(ObjectType.member, '$group Member');
+  }
+
   Widget _buildBottomControls() {
     return Material(
       color: Colors.white,
@@ -1084,6 +1893,11 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
                 ),
               ),
             const Spacer(),
+            Text(
+              'Zoom: ${(_controller.value.getMaxScaleOnAxis() * 100).toInt()}%',
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(width: 16),
             SizedBox(
               width: 90,
               child: TextField(
@@ -1122,6 +1936,44 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
                 _showCoordinates ? 'Hide Coordinates' : 'Show Coordinates',
               ),
             ),
+            const SizedBox(width: 8),
+            OutlinedButton(
+              onPressed: () => setState(
+                () => _showBuildingCoordinates = !_showBuildingCoordinates,
+              ),
+              child: Text(
+                _showBuildingCoordinates
+                    ? 'Hide Building Coordinates'
+                    : 'Show Building Coordinates',
+              ),
+            ),
+            const SizedBox(width: 8),
+            OutlinedButton(
+              onPressed: () => setState(() => _hideRadius = !_hideRadius),
+              child: Text(_hideRadius ? 'Show Radius' : 'Hide Radius'),
+            ),
+            if (!widget.readOnly) ...[
+              const SizedBox(width: 16),
+              ElevatedButton.icon(
+                onPressed: _selectAllObjects,
+                icon: const Icon(Icons.select_all),
+                label: const Text('Select All'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: _deleteAllObjects,
+                icon: const Icon(Icons.delete_sweep),
+                label: const Text('Delete All'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -1468,6 +2320,8 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
       _centerViewOn(_viewportSize ~/ 2, _viewportSize ~/ 2);
 
   void _setViewportAround(int gameX, int gameY) {
+    if (_isMapViewLocked) return; // Don't move if locked
+
     int startX = gameX - (_viewportSize ~/ 2);
     int startY = gameY - (_viewportSize ~/ 2);
     final maxStart = worldMax - _viewportSize + 1;
@@ -1486,6 +2340,442 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
     if (x < 0 || x > worldMax || y < 0 || y > worldMax) return;
     _setViewportAround(x, y);
     _centerOnViewportCenter();
+  }
+
+  void _selectAllObjects() {
+    setState(() {
+      _highlightedIndex = null; // Clear individual highlight
+      // Show a message about selecting all objects
+    });
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${_objects.length} objects selected'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  // ===== FIRST-TIME USER SETUP FLOW =====
+
+  Future<void> _checkFirstTimeUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeenSetup = prefs.getBool('hivemap_has_seen_setup') ?? false;
+
+    if (!hasSeenSetup && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showWelcomeDialog();
+      });
+    }
+  }
+
+  void _showWelcomeDialog() {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Welcome to HiveMap Editor!'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'This tool helps you plan your hive layout and manage your bear trap teams.',
+              style: TextStyle(fontSize: 16),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Would you like help setting up your map or jump straight to editing?',
+              style: TextStyle(fontSize: 14),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _enterEditor();
+            },
+            child: const Text('Enter Editor'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _startSetupFlow();
+            },
+            child: const Text('Help Build'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _enterEditor() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('hivemap_has_seen_setup', true);
+    setState(() {
+      _isFirstTimeUser = false;
+    });
+  }
+
+  void _startSetupFlow() {
+    setState(() {
+      _showSetupFlow = true;
+      _setupStep = 1; // Start with BT1 setup
+    });
+    _showBT1Setup();
+  }
+
+  void _showBT1Setup() {
+    _showBTSetupDialog('BT1', 'Bear Trap 1', () => _showBT2Setup());
+  }
+
+  void _showBT2Setup() {
+    _showBTSetupDialog('BT2', 'Bear Trap 2', () => _showBT3ChoiceDialog());
+  }
+
+  void _showBT3ChoiceDialog() {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Bear Trap 3'),
+        content: const Text('Do you use Bear Trap 3?'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              setState(() {
+                _useBT3 = false;
+              });
+              _showMembersSetup();
+            },
+            child: const Text('No'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              setState(() {
+                _useBT3 = true;
+              });
+              _showBT3Setup();
+            },
+            child: const Text('Yes'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBT3Setup() {
+    _showBTSetupDialog('BT3', 'Bear Trap 3', () => _showMembersSetup());
+  }
+
+  void _showBTSetupDialog(String btKey, String btName, VoidCallback onNext) {
+    final TextEditingController xController = TextEditingController();
+    final TextEditingController yController = TextEditingController();
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text('Where is $btName?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Enter the coordinates for $btName:'),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: xController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'X Coordinate',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: yController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Y Coordinate',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              final x = int.tryParse(xController.text.trim());
+              final y = int.tryParse(yController.text.trim());
+
+              if (x == null ||
+                  y == null ||
+                  x < 0 ||
+                  x > worldMax ||
+                  y < 0 ||
+                  y > worldMax) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please enter valid coordinates (0-1199)'),
+                  ),
+                );
+                return;
+              }
+
+              Navigator.of(ctx).pop();
+
+              // Store coordinates and place BT
+              setState(() {
+                _setupBTCoordinates[btKey] = {'x': x, 'y': y};
+              });
+
+              _placeBearTrap(btKey, x, y);
+              onNext();
+            },
+            child: const Text('Next'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _placeBearTrap(String btKey, int x, int y) {
+    _pushUndoState();
+    setState(() {
+      _objects.add(
+        GridObject(type: ObjectType.bearTrap, name: btKey, gameX: x, gameY: y),
+      );
+    });
+    _saveMap();
+
+    // Center view on the placed BT
+    _setViewportAround(x, y);
+    _centerOnViewportCenter();
+  }
+
+  void _showMembersSetup() {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Import Members'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Would you like to import your member list or add members manually later?',
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Import option will download a template CSV file for you to fill out.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _completeSetup();
+            },
+            child: const Text('Add Later'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _showImportDialog();
+            },
+            child: const Text('Import CSV'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showImportDialog() {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Import Members'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('1. Download the template CSV file'),
+            SizedBox(height: 8),
+            Text('2. Fill it out with your member information'),
+            SizedBox(height: 8),
+            Text('3. Upload the completed file'),
+            SizedBox(height: 16),
+            Text(
+              'Template includes: Member Name, BT Group (BT1/BT2/BT3), Rank, Attendance %',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _completeSetup();
+            },
+            child: const Text('Skip'),
+          ),
+          OutlinedButton(
+            onPressed: _downloadTemplate,
+            child: const Text('Download Template'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await _importMembersFromSpreadsheet();
+              _completeSetup();
+            },
+            child: const Text('Upload CSV'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _downloadTemplate() {
+    // Create CSV template content
+    const csvContent = '''Member Name,BT Group,Rank,Attendance %
+John Doe,BT1,1,100
+Jane Smith,BT1,2,95
+Bob Johnson,BT2,1,90
+Alice Brown,BT2,2,85
+Charlie Wilson,BT3,1,80''';
+
+    // Create and download the file
+    final bytes = utf8.encode(csvContent);
+    final blob = html.Blob([bytes]);
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    html.AnchorElement(href: url)
+      ..setAttribute('download', 'Survival Planner - Members import.csv')
+      ..click();
+    html.Url.revokeObjectUrl(url);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Template CSV downloaded: "Survival Planner - Members import.csv"',
+          ),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  void _completeSetup() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('hivemap_has_seen_setup', true);
+
+    setState(() {
+      _isFirstTimeUser = false;
+      _showSetupFlow = false;
+      _setupStep = 0;
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Setup complete! Welcome to HiveMap Editor.'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  Future<void> _resetFirstTimeSetup() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('hivemap_has_seen_setup', false);
+
+    setState(() {
+      _isFirstTimeUser = true;
+      _showSetupFlow = false;
+      _setupStep = 0;
+      // Reset setup state
+      _setupBTCoordinates = {
+        'BT1': {'x': null, 'y': null},
+        'BT2': {'x': null, 'y': null},
+        'BT3': {'x': null, 'y': null},
+      };
+      _useBT3 = false;
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'First-time setup has been reset. Reload the page to see the welcome dialog.',
+          ),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  void _deleteAllObjects() {
+    if (_objects.isEmpty) return;
+
+    showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete All Objects'),
+        content: Text(
+          'Are you sure you want to delete all ${_objects.length} objects? This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text(
+              'Delete All',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    ).then((confirmed) {
+      if (confirmed == true) {
+        _pushUndoState();
+        setState(() {
+          _objects.clear();
+          _highlightedIndex = null;
+          _menuPosition = null;
+          _menuObjectIndex = null;
+          // Reset BT ranks
+          _lastBTRank['BT1'] = 0;
+          _lastBTRank['BT2'] = 0;
+          _lastBTRank['BT3'] = 0;
+        });
+        _saveMap();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('All objects deleted'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    });
   }
 
   Future<Point<int>?> _promptCoordinates({int? initialX, int? initialY}) async {
@@ -1642,41 +2932,20 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
     String? slug = prefs.getString('hivemap_shared_slug_$mapId');
     String mode = 'private';
 
-    if (slug == null) {
-      // First time sharing: create a shared map row
-      List<dynamic> objects = const [];
-      try {
-        objects = jsonDecode(_serializeObjects()) as List<dynamic>;
-      } catch (_) {}
-      final payload = <String, dynamic>{'objects': objects};
-      try {
-        final row = await MapService.createMap(_currentMapName, payload);
-        slug = (row['slug'] ?? '').toString();
-        mode = (row['share_mode'] ?? 'private').toString();
-        if (slug.isNotEmpty) {
-          await prefs.setString('hivemap_shared_slug_$mapId', slug);
-        }
-      } catch (err) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create shared map: $err')),
-        );
-        return;
-      }
-    } else {
-      // Existing share: fetch current mode
+    // Existing share: fetch current mode
+    if (slug != null) {
       try {
         final row = await MapService.loadMapBySlug(slug);
         if (row != null) {
           mode = (row['share_mode'] ?? 'private').toString();
         }
       } catch (_) {}
+
+      // At this point slug must be non-null
+      if (slug.isEmpty) return;
+
+      await _showShareDialogWithSlug(slug, mode);
     }
-
-    // At this point slug must be non-null
-    if (slug.isEmpty) return;
-
-    await _showShareDialogWithSlug(slug, mode);
   }
 
   Future<void> _showShareDialogWithSlug(String slug, String initialMode) async {
@@ -2226,7 +3495,10 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
         .toList(growable: false);
     final sorted = List<MemberRecord>.from(list);
     sorted.sort((a, b) {
-      final pc = b.power.compareTo(a.power); // desc
+      // Use effective power if attendance is enabled, otherwise use regular power
+      final powerA = _attendanceEnabled ? a.effectivePower : a.power;
+      final powerB = _attendanceEnabled ? b.effectivePower : b.power;
+      final pc = powerB.compareTo(powerA); // desc
       if (pc != 0) return pc;
       return a.name.toLowerCase().compareTo(b.name.toLowerCase());
     });
@@ -2427,13 +3699,15 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
 
 class _ObjectMenu extends StatelessWidget {
   final GridObject object;
-  final VoidCallback onMove;
+  final VoidCallback onDragMove;
+  final VoidCallback onCoordinateMove;
   final VoidCallback onDelete;
   final VoidCallback? onEdit; // optional edit (rank) for members
 
   const _ObjectMenu({
     required this.object,
-    required this.onMove,
+    required this.onDragMove,
+    required this.onCoordinateMove,
     required this.onDelete,
     this.onEdit,
   });
@@ -2465,18 +3739,24 @@ class _ObjectMenu extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextButton.icon(
-                  onPressed: onMove,
-                  icon: const Icon(Icons.open_with),
+                  onPressed: onDragMove,
+                  icon: const Icon(Icons.pan_tool),
                   label: const Text('Move'),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 4),
+                TextButton.icon(
+                  onPressed: onCoordinateMove,
+                  icon: const Icon(Icons.gps_fixed),
+                  label: const Text('Coord'),
+                ),
+                const SizedBox(width: 4),
                 if (onEdit != null) ...[
                   TextButton.icon(
                     onPressed: onEdit,
                     icon: const Icon(Icons.edit),
                     label: const Text('Edit'),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
                 ],
                 TextButton.icon(
                   onPressed: onDelete,

@@ -1,7 +1,16 @@
 import 'package:flutter/foundation.dart';
 
 /// Types of placeable objects on the grid
-enum ObjectType { flag, bearTrap, hq, member, mountain, lake, allianceNode }
+enum ObjectType {
+  select,
+  flag,
+  bearTrap,
+  hq,
+  member,
+  mountain,
+  lake,
+  allianceNode,
+}
 
 /// A placed object with its grid position (top-left for multi-tile objects)
 @immutable
