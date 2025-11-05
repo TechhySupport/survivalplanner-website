@@ -400,26 +400,58 @@ class _GridPainter extends CustomPainter {
     }
 
     // Draw immutable permanent structures first (below user objects)
-    final permanents = getPermanentStructures();
-    PermanentStructure? castle;
-    for (final p in permanents) {
-      if (p.name.toLowerCase().contains('castle')) {
-        castle = p;
-        break;
+    if (!arePermanentsHidden()) {
+      final permanents = getPermanentStructures();
+      PermanentStructure? castle;
+      for (final p in permanents) {
+        if (p.name.toLowerCase().contains('castle')) {
+          castle = p;
+          break;
+        }
       }
-    }
-    for (final ps in permanents) {
-      // Optional influence zone (non-blocking, very light)
-      if (ps.influenceR != null && ps.influenceTopLeft != null) {
-        final iw = ps.influenceWidth!;
-        final ih = ps.influenceHeight!;
-        final (itx, ity) = ps.influenceTopLeft!;
-        final fill = const Color(0xFF3B82F6).withOpacity(0.04); // blue-500
-        final stroke = const Color(0xFF3B82F6).withOpacity(0.10);
-        for (int dy = 0; dy < ih; dy++) {
-          for (int dx = 0; dx < iw; dx++) {
-            final gx = itx + dx;
-            final gy = ity + dy;
+      for (final ps in permanents) {
+        // Optional influence zone (non-blocking, very light)
+        if (ps.influenceR != null && ps.influenceTopLeft != null) {
+          final iw = ps.influenceWidth!;
+          final ih = ps.influenceHeight!;
+          final (itx, ity) = ps.influenceTopLeft!;
+          final fill = const Color(0xFF3B82F6).withOpacity(0.04); // blue-500
+          final stroke = const Color(0xFF3B82F6).withOpacity(0.10);
+          for (int dy = 0; dy < ih; dy++) {
+            for (int dx = 0; dx < iw; dx++) {
+              final gx = itx + dx;
+              final gy = ity + dy;
+              final tx = gx - originGameX;
+              final ty = gy - originGameY;
+              if (tx < 0 || ty < 0 || tx >= gridW || ty >= gridH) continue;
+              _drawTile(
+                canvas,
+                tx,
+                ty,
+                fill: fill,
+                stroke: (dx == 0 || dy == 0 || dx == iw - 1 || dy == ih - 1)
+                    ? stroke
+                    : null,
+              );
+            }
+          }
+        }
+        final (ftx, fty) = ps.footprintTopLeft;
+        // Choose footprint color by structure kind (by name)
+        final lname = ps.name.toLowerCase();
+        final bool isCastle = lname.contains('castle');
+        final bool isTurret = lname.contains('turret');
+        final Color baseFill = isCastle
+            ? Colors.red.shade600
+            : (isTurret ? Colors.green.shade600 : const Color(0xFF334155));
+        final Color baseStroke = isCastle
+            ? Colors.red.shade900
+            : (isTurret ? Colors.green.shade900 : const Color(0xFF0F172A));
+        // Draw footprint tiles if within viewport
+        for (int dy = 0; dy < ps.h; dy++) {
+          for (int dx = 0; dx < ps.w; dx++) {
+            final gx = ftx + dx;
+            final gy = fty + dy;
             final tx = gx - originGameX;
             final ty = gy - originGameY;
             if (tx < 0 || ty < 0 || tx >= gridW || ty >= gridH) continue;
@@ -427,104 +459,75 @@ class _GridPainter extends CustomPainter {
               canvas,
               tx,
               ty,
-              fill: fill,
-              stroke: (dx == 0 || dy == 0 || dx == iw - 1 || dy == ih - 1)
-                  ? stroke
-                  : null,
+              fill: baseFill.withOpacity(0.85),
+              stroke: baseStroke.withOpacity(0.35),
             );
           }
         }
-      }
-      final (ftx, fty) = ps.footprintTopLeft;
-      // Choose footprint color by structure kind (by name)
-      final lname = ps.name.toLowerCase();
-      final bool isCastle = lname.contains('castle');
-      final bool isTurret = lname.contains('turret');
-      final Color baseFill = isCastle
-          ? Colors.red.shade600
-          : (isTurret ? Colors.green.shade600 : const Color(0xFF334155));
-      final Color baseStroke = isCastle
-          ? Colors.red.shade900
-          : (isTurret ? Colors.green.shade900 : const Color(0xFF0F172A));
-      // Draw footprint tiles if within viewport
-      for (int dy = 0; dy < ps.h; dy++) {
-        for (int dx = 0; dx < ps.w; dx++) {
-          final gx = ftx + dx;
-          final gy = fty + dy;
-          final tx = gx - originGameX;
-          final ty = gy - originGameY;
-          if (tx < 0 || ty < 0 || tx >= gridW || ty >= gridH) continue;
-          _drawTile(
+
+        // Draw optional exclusion zone highlight using radius -> width formula
+        final ew = ps.exclusionWidth;
+        final eh = ps.exclusionHeight;
+        final (etx, ety) = ps.exclusionTopLeft;
+        if (ew > 0 && eh > 0) {
+          final areaFill = const Color(0xFFEF4444).withOpacity(0.06); // red-500
+          final areaStroke = const Color(0xFFEF4444).withOpacity(0.15);
+          final borderStroke = const Color(
+            0xFFDC2626,
+          ).withOpacity(0.85); // red-600
+          for (int dy = 0; dy < eh; dy++) {
+            for (int dx = 0; dx < ew; dx++) {
+              final gx = etx + dx;
+              final gy = ety + dy;
+              final tx = gx - originGameX;
+              final ty = gy - originGameY;
+              if (tx < 0 || ty < 0 || tx >= gridW || ty >= gridH) continue;
+              final isBorder =
+                  dx == 0 || dy == 0 || dx == ew - 1 || dy == eh - 1;
+              _drawTile(
+                canvas,
+                tx,
+                ty,
+                fill: areaFill,
+                stroke: isBorder ? borderStroke : areaStroke,
+              );
+            }
+          }
+        }
+
+        // Label at center if visible (map turret names by camera view)
+        final atx = ps.cx - originGameX;
+        final aty = ps.cy - originGameY;
+        if (atx >= 0 && aty >= 0 && atx < gridW && aty < gridH) {
+          String labelText = ps.name;
+          final lname2 = ps.name.toLowerCase();
+          if (lname2.contains('turret') && castle != null) {
+            final dx = ps.cx - castle.cx;
+            final dy = ps.cy - castle.cy;
+            if (dx > 0 && dy > 0) {
+              labelText = 'Southwing Turret'; // (+X,+Y) swapped per request
+            } else if (dx < 0 && dy < 0) {
+              labelText = 'Northground Turret'; // (-X,-Y) swapped per request
+            } else if (dx > 0 && dy < 0) {
+              labelText = 'Eastcourt Turret'; // (+X,-Y)
+            } else if (dx < 0 && dy > 0) {
+              labelText = 'Westplain Turret'; // (-X,+Y)
+            } else {
+              labelText = 'Turret';
+            }
+          }
+          _drawLabel(
             canvas,
-            tx,
-            ty,
-            fill: baseFill.withOpacity(0.85),
-            stroke: baseStroke.withOpacity(0.35),
+            atx,
+            aty,
+            labelText,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Colors.black,
+            ),
           );
         }
-      }
-
-      // Draw optional exclusion zone highlight using radius -> width formula
-      final ew = ps.exclusionWidth;
-      final eh = ps.exclusionHeight;
-      final (etx, ety) = ps.exclusionTopLeft;
-      if (ew > 0 && eh > 0) {
-        final areaFill = const Color(0xFFEF4444).withOpacity(0.06); // red-500
-        final areaStroke = const Color(0xFFEF4444).withOpacity(0.15);
-        final borderStroke = const Color(
-          0xFFDC2626,
-        ).withOpacity(0.85); // red-600
-        for (int dy = 0; dy < eh; dy++) {
-          for (int dx = 0; dx < ew; dx++) {
-            final gx = etx + dx;
-            final gy = ety + dy;
-            final tx = gx - originGameX;
-            final ty = gy - originGameY;
-            if (tx < 0 || ty < 0 || tx >= gridW || ty >= gridH) continue;
-            final isBorder = dx == 0 || dy == 0 || dx == ew - 1 || dy == eh - 1;
-            _drawTile(
-              canvas,
-              tx,
-              ty,
-              fill: areaFill,
-              stroke: isBorder ? borderStroke : areaStroke,
-            );
-          }
-        }
-      }
-
-      // Label at center if visible (map turret names by camera view)
-      final atx = ps.cx - originGameX;
-      final aty = ps.cy - originGameY;
-      if (atx >= 0 && aty >= 0 && atx < gridW && aty < gridH) {
-        String labelText = ps.name;
-        final lname2 = ps.name.toLowerCase();
-        if (lname2.contains('turret') && castle != null) {
-          final dx = ps.cx - castle.cx;
-          final dy = ps.cy - castle.cy;
-          if (dx > 0 && dy > 0) {
-            labelText = 'Southwing Turret'; // (+X,+Y) swapped per request
-          } else if (dx < 0 && dy < 0) {
-            labelText = 'Northground Turret'; // (-X,-Y) swapped per request
-          } else if (dx > 0 && dy < 0) {
-            labelText = 'Eastcourt Turret'; // (+X,-Y)
-          } else if (dx < 0 && dy > 0) {
-            labelText = 'Westplain Turret'; // (-X,+Y)
-          } else {
-            labelText = 'Turret';
-          }
-        }
-        _drawLabel(
-          canvas,
-          atx,
-          aty,
-          labelText,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: Colors.black,
-          ),
-        );
       }
     }
 
