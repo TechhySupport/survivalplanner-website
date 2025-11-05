@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
-import 'services/cloud_sync_service.dart';
-import 'helios/marksman_helios_calculator.dart';
-import 'helios/infantry_helios_calculator.dart';
-import 'helios/lancers_helios_calculator.dart';
+import '../services/cloud_sync_service.dart';
+import '../helios/marksman_helios_calculator.dart';
+import '../helios/infantry_helios_calculator.dart';
+import '../helios/lancers_helios_calculator.dart';
 import 'package:keyboard_actions/keyboard_actions.dart';
-import 'services/analytics_service.dart';
+import '../services/analytics_service.dart';
 
 class HeliosCalculatorPage extends StatefulWidget {
   const HeliosCalculatorPage({super.key});
@@ -39,14 +39,17 @@ class _HeliosCalculatorPageState extends State<HeliosCalculatorPage>
   void initState() {
     super.initState();
     AnalyticsService.logPage('HeliosCalculatorPage');
-    _anim =
-        AnimationController(vsync: this, duration: const Duration(seconds: 2))
-          ..repeat(reverse: true);
+    _anim = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
     conversionController.text = '13';
     converted = 1;
     _initLoad();
-    _cloudTimer =
-        Timer.periodic(const Duration(seconds: 60), (_) => _saveCloud());
+    _cloudTimer = Timer.periodic(
+      const Duration(seconds: 60),
+      (_) => _saveCloud(),
+    );
     Future.delayed(const Duration(seconds: 2), _saveCloud);
   }
 
@@ -150,10 +153,9 @@ class _HeliosCalculatorPageState extends State<HeliosCalculatorPage>
                         focusNode: _conversionFocus,
                         toolbarButtons: [
                           (node) => IconButton(
-                                icon:
-                                    const Icon(Icons.check, color: Colors.green),
-                                onPressed: () => node.unfocus(),
-                              )
+                            icon: const Icon(Icons.check, color: Colors.green),
+                            onPressed: () => node.unfocus(),
+                          ),
                         ],
                       ),
                     ],
@@ -218,7 +220,7 @@ class _HeliosCalculatorPageState extends State<HeliosCalculatorPage>
             color: Colors.deepPurple.shade200.withOpacity(.35),
             blurRadius: 18,
             offset: const Offset(0, 8),
-          )
+          ),
         ],
       ),
       child: Column(
@@ -226,14 +228,19 @@ class _HeliosCalculatorPageState extends State<HeliosCalculatorPage>
         children: [
           Row(
             children: [
-              const Icon(Icons.local_fire_department,
-                  color: Colors.white, size: 36),
+              const Icon(
+                Icons.local_fire_department,
+                color: Colors.white,
+                size: 36,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Helios Resources',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Colors.white, fontWeight: FontWeight.w600),
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               IconButton(
@@ -241,25 +248,36 @@ class _HeliosCalculatorPageState extends State<HeliosCalculatorPage>
                   await _loadTotals();
                 },
                 icon: const Icon(Icons.refresh, color: Colors.white70),
-              )
+              ),
             ],
           ),
           const SizedBox(height: 4),
-          Text('Track shards, convert and jump into class specifics.',
-              style: TextStyle(color: Colors.white.withOpacity(.85))),
+          Text(
+            'Track shards, convert and jump into class specifics.',
+            style: TextStyle(color: Colors.white.withOpacity(.85)),
+          ),
           const SizedBox(height: 16),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              _pill('${_format(totalCrystals)} Shards', Icons.auto_awesome,
-                  Colors.amber.shade300),
-              _pill('${_format((totalCrystals / 13).ceil())} Crystals',
-                  Icons.bubble_chart, Colors.cyan.shade300),
-              _pill('${_format(totalSteel)} Steel', Icons.construction,
-                  Colors.blueGrey.shade200),
+              _pill(
+                '${_format(totalCrystals)} Shards',
+                Icons.auto_awesome,
+                Colors.amber.shade300,
+              ),
+              _pill(
+                '${_format((totalCrystals / 13).ceil())} Crystals',
+                Icons.bubble_chart,
+                Colors.cyan.shade300,
+              ),
+              _pill(
+                '${_format(totalSteel)} Steel',
+                Icons.construction,
+                Colors.blueGrey.shade200,
+              ),
             ],
-          )
+          ),
         ],
       ),
     );
@@ -337,7 +355,7 @@ class _HeliosCalculatorPageState extends State<HeliosCalculatorPage>
                     color: color2.withOpacity(.28),
                     blurRadius: 14,
                     offset: const Offset(0, 6),
-                  )
+                  ),
                 ],
               ),
               child: Stack(
@@ -345,8 +363,11 @@ class _HeliosCalculatorPageState extends State<HeliosCalculatorPage>
                   Positioned(
                     right: 12,
                     top: 12,
-                    child: Icon(icon,
-                        size: 34, color: Colors.white.withOpacity(.85)),
+                    child: Icon(
+                      icon,
+                      size: 34,
+                      color: Colors.white.withOpacity(.85),
+                    ),
                   ),
                   Padding(
                     padding: const EdgeInsets.all(16.0),
@@ -405,12 +426,20 @@ class _HeliosCalculatorPageState extends State<HeliosCalculatorPage>
             spacing: 10,
             runSpacing: 10,
             children: [
-              _miniPill('${_format(converted)} Fire Crystals', Icons.whatshot,
-                  Colors.deepPurple.shade100, Colors.deepPurple.shade500),
-              _miniPill('${_format((converted * 13))} Shards Used',
-                  Icons.data_usage, Colors.indigo.shade100, Colors.indigo),
+              _miniPill(
+                '${_format(converted)} Fire Crystals',
+                Icons.whatshot,
+                Colors.deepPurple.shade100,
+                Colors.deepPurple.shade500,
+              ),
+              _miniPill(
+                '${_format((converted * 13))} Shards Used',
+                Icons.data_usage,
+                Colors.indigo.shade100,
+                Colors.indigo,
+              ),
             ],
-          )
+          ),
         ],
       ),
     );
@@ -467,8 +496,9 @@ class _HeliosCalculatorPageState extends State<HeliosCalculatorPage>
       ),
       child: AnimatedCrossFade(
         duration: const Duration(milliseconds: 250),
-        crossFadeState:
-            showDetails ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+        crossFadeState: showDetails
+            ? CrossFadeState.showFirst
+            : CrossFadeState.showSecond,
         firstChild: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -476,15 +506,21 @@ class _HeliosCalculatorPageState extends State<HeliosCalculatorPage>
             _breakRow('Lancers', lancersCrystals, Colors.indigo.shade400),
             _breakRow('Marksman', marksmanCrystals, Colors.teal.shade500),
             const SizedBox(height: 4),
-            Text('Tap class tiles above to update values.',
-                style: TextStyle(
-                    fontSize: 12, color: Colors.black.withOpacity(.55))),
+            Text(
+              'Tap class tiles above to update values.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.black.withOpacity(.55),
+              ),
+            ),
           ],
         ),
         secondChild: Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Text('Tap to view per-class shard totals',
-              style: TextStyle(color: Colors.black.withOpacity(.55))),
+          child: Text(
+            'Tap to view per-class shard totals',
+            style: TextStyle(color: Colors.black.withOpacity(.55)),
+          ),
         ),
       ),
     );
@@ -502,12 +538,17 @@ class _HeliosCalculatorPageState extends State<HeliosCalculatorPage>
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           Expanded(
-            child: Text(label,
-                style: const TextStyle(fontWeight: FontWeight.w500)),
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
           ),
-          Text(_format(value),
-              style: const TextStyle(
-                  fontFeatures: [FontFeature.tabularFigures()])),
+          Text(
+            _format(value),
+            style: const TextStyle(
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
         ],
       ),
     );
@@ -547,22 +588,28 @@ class _HeliosCalculatorPageState extends State<HeliosCalculatorPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: color.withOpacity(.9))),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: color.withOpacity(.9),
+                  ),
+                ),
                 const SizedBox(height: 2),
                 FittedBox(
                   alignment: Alignment.centerLeft,
                   fit: BoxFit.scaleDown,
-                  child: Text(value,
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: color.darken())),
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: color.darken(),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -585,9 +632,13 @@ class _HeliosCalculatorPageState extends State<HeliosCalculatorPage>
         children: [
           Icon(icon, size: 16, color: Colors.white),
           const SizedBox(width: 6),
-          Text(text,
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.w600)),
+          Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -606,8 +657,10 @@ class _HeliosCalculatorPageState extends State<HeliosCalculatorPage>
         children: [
           Icon(icon, size: 16, color: accent),
           const SizedBox(width: 6),
-          Text(text,
-              style: TextStyle(fontWeight: FontWeight.w600, color: accent)),
+          Text(
+            text,
+            style: TextStyle(fontWeight: FontWeight.w600, color: accent),
+          ),
         ],
       ),
     );
@@ -629,7 +682,7 @@ class _HeliosCalculatorPageState extends State<HeliosCalculatorPage>
             color: Colors.deepPurple.shade100.withOpacity(.35),
             blurRadius: 18,
             offset: const Offset(0, 6),
-          )
+          ),
         ],
         border: Border.all(color: Colors.deepPurple.shade50, width: 1),
       ),

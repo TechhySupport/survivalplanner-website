@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'event_page.dart';
 import 'settings_page.dart';
-import 'services/analytics_service.dart';
+import '../services/analytics_service.dart';
 import 'bottom_nav_bar.dart';
 
 // Local copy of the GradientTileButton to mirror Hero page styling

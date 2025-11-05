@@ -9,7 +9,7 @@ import 'building_page.dart';
 import 'main.dart';
 import 'troops_page.dart';
 import 'more.dart';
-import 'web/web_landing.dart';
+import 'web_landing.dart';
 
 class CustomBottomNavBar extends StatefulWidget {
   const CustomBottomNavBar({super.key});

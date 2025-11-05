@@ -6,8 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/map_service.dart';
-import 'hivemap_editor.dart';
-import '../web/web_landing.dart';
+import 'main.dart';
+import '../survival_planner_calculator/web_landing.dart';
 
 class HiveMapScreen extends StatefulWidget {
   final String slug;

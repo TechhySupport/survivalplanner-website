@@ -5,14 +5,14 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:keyboard_actions/keyboard_actions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'services/cloud_sync_service.dart';
+import '../services/cloud_sync_service.dart';
 // Premium removed — fully free on web
-import 'services/analytics_service.dart';
+import '../services/analytics_service.dart';
 import 'utc_badge.dart';
 import 'settings_page.dart';
-import 'services/loginscreen.dart';
+import '../services/loginscreen.dart';
 import 'bottom_nav_bar.dart';
-import 'web/web_landing.dart';
+import 'web_landing.dart';
 import 'chief_page.dart';
 import 'hero_page.dart';
 import 'building_page.dart';

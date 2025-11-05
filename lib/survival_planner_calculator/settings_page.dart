@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'generated/app_localizations.dart';
+import '../generated/app_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'services/purchase_service.dart'; // <-- add this import
-import 'services/terms_and_services.dart';
-import 'services/privacy_policy.dart';
+import '../services/purchase_service.dart'; // <-- add this import
+import '../services/terms_and_services.dart';
+import '../services/privacy_policy.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'services/language.dart';
-import 'services/account_settings.dart';
-import 'services/analytics_service.dart';
+import '../services/language.dart';
+import '../services/account_settings.dart';
+import '../services/analytics_service.dart';
 
 // Use the same global supabase client as in main.dart
 final supabase = Supabase.instance.client;

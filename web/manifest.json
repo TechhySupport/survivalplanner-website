@@ -1,11 +1,11 @@
 {
-    "name": "surivalplanner_website",
-    "short_name": "surivalplanner_website",
+    "name": "Survival Planner",
+    "short_name": "Survival Planner",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Interactive tools for State of Survival game planning - HiveMap Editor and Resource Calculators",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

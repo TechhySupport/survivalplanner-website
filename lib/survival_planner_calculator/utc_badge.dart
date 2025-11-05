@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'generated/app_localizations.dart';
+import '../generated/app_localizations.dart';
 
 /// Reusable UTC time badge. Shows live updating UTC clock every second.
 class UtcBadge extends StatelessWidget {

@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../chief_page.dart';
-import '../hero_page.dart';
-import '../building_page.dart';
-import '../event_page.dart';
-import '../troops_page.dart';
+import '../survival_planner_calculator/chief_page.dart';
+import '../survival_planner_calculator/hero_page.dart';
+import '../survival_planner_calculator/building_page.dart';
+import '../survival_planner_calculator/event_page.dart';
+import '../survival_planner_calculator/troops_page.dart';
 import '../services/loginscreen.dart';
-import '../settings_page.dart';
-import '../hivemap/hivemap_editor.dart';
+import '../survival_planner_calculator/settings_page.dart';
+import '../hivemap/main.dart';
 
 class WebLandingPage extends StatelessWidget {
   const WebLandingPage({super.key});

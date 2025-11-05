@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:keyboard_actions/keyboard_actions.dart';
 import 'package:intl/intl.dart';
-import 'services/analytics_service.dart';
+import '../services/analytics_service.dart';
 
 class FireCrystalShardScreen extends StatefulWidget {
   const FireCrystalShardScreen({super.key});

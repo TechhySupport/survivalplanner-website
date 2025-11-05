@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
-import 'services/analytics_service.dart';
+import '../services/analytics_service.dart';
 
 class HeliosDashboardPage extends StatefulWidget {
   const HeliosDashboardPage({super.key});

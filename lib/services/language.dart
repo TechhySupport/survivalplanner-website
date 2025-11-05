@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../generated/app_localizations.dart';
-import '../settings_page.dart' show appLocale; // reuse global notifier
+import '../survival_planner_calculator/settings_page.dart'
+    show appLocale; // reuse global notifier
 import 'analytics_service.dart';
 
 class LanguagePage extends StatefulWidget {
@@ -70,8 +71,8 @@ class _LanguagePageState extends State<LanguagePage> {
                   trailing: isSelected
                       ? const Icon(Icons.check, color: Colors.green)
                       : (disabled
-                          ? Icon(Icons.lock, color: Colors.grey.shade400)
-                          : null),
+                            ? Icon(Icons.lock, color: Colors.grey.shade400)
+                            : null),
                   onTap: disabled
                       ? null
                       : () async {

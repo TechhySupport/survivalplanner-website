@@ -4,19 +4,19 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'services/cloud_sync_service.dart'; // <-- added import
+import '../services/cloud_sync_service.dart'; // <-- added import
 import 'bottom_nav_bar.dart';
 import 'bear_trap_troops.dart';
 import 'crazy_joe_troops.dart';
 import 'troop_training_calculator.dart';
 import 'helios_calculator.dart';
-import 'generated/app_localizations.dart';
+import '../generated/app_localizations.dart';
 import 'utc_badge.dart';
 import 'package:keyboard_actions/keyboard_actions.dart';
-import 'services/analytics_service.dart';
+import '../services/analytics_service.dart';
 import 'settings_page.dart';
-import 'services/loginscreen.dart';
-import 'web/web_landing.dart';
+import '../services/loginscreen.dart';
+import 'web_landing.dart';
 import 'chief_page.dart';
 import 'hero_page.dart';
 import 'building_page.dart';

@@ -4,14 +4,14 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 // Premium removed — all features are free on web
 import 'package:keyboard_actions/keyboard_actions.dart';
-import 'services/analytics_service.dart';
-import 'services/cloud_sync_service.dart';
+import '../services/analytics_service.dart';
+import '../services/cloud_sync_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'utc_badge.dart';
 import 'settings_page.dart';
-import 'services/loginscreen.dart';
+import '../services/loginscreen.dart';
 import 'bottom_nav_bar.dart';
-import 'web/web_landing.dart';
+import 'web_landing.dart';
 import 'chief_page.dart';
 import 'hero_page.dart';
 import 'building_page.dart';

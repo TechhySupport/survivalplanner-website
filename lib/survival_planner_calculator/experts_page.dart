@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
-import 'services/analytics_service.dart';
+import '../services/analytics_service.dart';
 
-class PetsPage extends StatefulWidget {
-  const PetsPage({super.key});
+class ExpertsPage extends StatefulWidget {
+  const ExpertsPage({super.key});
 
   @override
-  State<PetsPage> createState() => _PetsPageState();
+  State<ExpertsPage> createState() => _ExpertsPageState();
 }
 
-class _PetsPageState extends State<PetsPage> {
+class _ExpertsPageState extends State<ExpertsPage> {
   @override
   void initState() {
     super.initState();
-    AnalyticsService.logPage('PetsPage');
+    AnalyticsService.logPage('ExpertsPage');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Pets')),
+      appBar: AppBar(title: const Text('Experts')),
       body: const Center(
         child: Text(
           'Coming soon',

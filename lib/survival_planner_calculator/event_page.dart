@@ -5,17 +5,17 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart'; // Add if not present
-import 'generated/app_localizations.dart';
+import '../generated/app_localizations.dart';
 import 'bottom_nav_bar.dart';
 import 'SVS_calculator.dart'; // Make sure this file exists and exports SVSCalculatorPage
-import 'events/king_of_icefield.dart';
-import 'events/armament_competition.dart';
-import 'events/officer_project.dart';
+import '../events/king_of_icefield.dart';
+import '../events/armament_competition.dart';
+import '../events/officer_project.dart';
 import 'utc_badge.dart';
-import 'services/analytics_service.dart';
+import '../services/analytics_service.dart';
 import 'settings_page.dart';
-import 'services/loginscreen.dart';
-import 'web/web_landing.dart';
+import '../services/loginscreen.dart';
+import 'web_landing.dart';
 import 'chief_page.dart';
 import 'hero_page.dart';
 import 'building_page.dart';

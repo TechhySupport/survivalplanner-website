@@ -6,16 +6,16 @@ import 'package:intl/intl.dart';
 import 'dart:async';
 import '../services/cloud_sync_service.dart';
 import '../services/analytics_service.dart';
-import '../utc_badge.dart';
-import '../settings_page.dart';
+import '../survival_planner_calculator/utc_badge.dart';
+import '../survival_planner_calculator/settings_page.dart';
 import '../services/loginscreen.dart';
-import '../bottom_nav_bar.dart';
-import '../web/web_landing.dart';
-import '../chief_page.dart';
-import '../hero_page.dart';
-import '../building_page.dart';
-import '../event_page.dart';
-import '../troops_page.dart';
+import '../survival_planner_calculator/bottom_nav_bar.dart';
+import '../survival_planner_calculator/web_landing.dart';
+import '../survival_planner_calculator/chief_page.dart';
+import '../survival_planner_calculator/hero_page.dart';
+import '../survival_planner_calculator/building_page.dart';
+import '../survival_planner_calculator/event_page.dart';
+import '../survival_planner_calculator/troops_page.dart';
 
 /// =====================
 ///  REUSABLE STAT TILE (shared look)
@@ -759,3 +759,5 @@ class _WebTopNav extends StatelessWidget {
     );
   }
 }
+
+
