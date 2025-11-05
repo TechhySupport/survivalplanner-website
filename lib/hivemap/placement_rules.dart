@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'models.dart';
+import 'static_world.dart';
 
 const int worldMax = 1199; // valid game coordinates are 0..1199 inclusive
 
@@ -82,6 +83,11 @@ bool canPlaceCenter({
       occupied.add(p);
     }
   }
+
+  // Add permanent structures: their exclusion zones are not buildable.
+  // This ensures no user-placed object can overlap those zones.
+  final blocked = permanentBlockedCells();
+  occupied.addAll(blocked);
 
   // Check overlap for new object
   for (final p in footprintCellsTopLeft(type, tl.x, tl.y)) {

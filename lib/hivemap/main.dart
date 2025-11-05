@@ -4,6 +4,7 @@ import 'dart:html' as html; // Web-only: used for downloading files
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart'
     show MatrixUtils, RenderBox, RenderRepaintBoundary;
@@ -19,6 +20,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/map_service.dart';
 import '../services/loginscreen.dart';
 import 'package:image/image.dart' as img;
+import 'static_world.dart';
 
 // Lightweight metadata for saved maps (local or cloud)
 class _MapMeta {
@@ -69,6 +71,8 @@ class HiveMapEditor extends StatefulWidget {
 }
 
 class _HiveMapEditorState extends State<HiveMapEditor> {
+  // Debug-only: unlock editing of permanent structures
+  bool _godMode = false;
   int _viewportSize = 30; // 15 | 30 | 50
 
   // Window origin in game coordinates (top-left of the visible grid)
@@ -111,6 +115,10 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
   // Drag move state for objects
   bool _isDragMoving = false;
   int? _dragMoveObjectIndex;
+
+  // God Mode: drag permanent structures (e.g., Sunfire Castle)
+  bool _isDraggingPermanent = false;
+  int? _dragPermanentIndex;
 
   // Map view lock state
   bool _isMapViewLocked = false;
@@ -774,6 +782,25 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
   }
 
   void _handlePanStart(DragStartDetails details) {
+    // In God Mode, allow dragging of permanent structures when starting on them
+    if (kDebugMode && _godMode) {
+      final coords = _convertTapToGameCoords(details.globalPosition);
+      if (coords != null) {
+        final idx = findPermanentIndexAt(coords.x, coords.y);
+        if (idx != -1) {
+          // Only enable direct drag for the Sunfire Castle as requested
+          final ps = getPermanentStructures()[idx];
+          if (ps.name == 'Sunfire Castle') {
+            setState(() {
+              _isDraggingPermanent = true;
+              _dragPermanentIndex = idx;
+            });
+            return; // Do not start draw-dragging
+          }
+        }
+      }
+    }
+
     final type = _selected.type;
 
     // Don't allow drag drawing when select tool is active
@@ -799,6 +826,33 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
   }
 
   void _handlePanUpdate(DragUpdateDetails details) {
+    // Update permanent structure position while dragging in God Mode
+    if (_isDraggingPermanent && _dragPermanentIndex != null) {
+      final coords = _convertTapToGameCoords(details.globalPosition);
+      if (coords != null) {
+        final idx = _dragPermanentIndex!;
+        final list = getPermanentStructures();
+        if (idx >= 0 && idx < list.length) {
+          final ps = list[idx];
+          // Move by setting the STRUCTURE CENTER under cursor; compute new bottom-right anchor
+          final halfW = (ps.w - 1) ~/ 2;
+          final halfH = (ps.h - 1) ~/ 2;
+          // Clamp center so footprint remains within world bounds
+          final minCx = halfW;
+          final maxCx = worldMax - ps.w + 1 + halfW;
+          final minCy = halfH;
+          final maxCy = worldMax - ps.h + 1 + halfH;
+          final newCx = coords.x.clamp(minCx, maxCx);
+          final newCy = coords.y.clamp(minCy, maxCy);
+          final newAx = newCx + halfW; // bottom-right anchor from center
+          final newAy = newCy + halfH;
+          replacePermanentAt(idx, ps.copyWith(ax: newAx, ay: newAy));
+          setState(() {});
+        }
+      }
+      return;
+    }
+
     if (!_isDragging) return;
 
     final coords = _convertTapToGameCoords(details.globalPosition);
@@ -808,6 +862,15 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
   }
 
   void _handlePanEnd(DragEndDetails details) {
+    // Finish God Mode permanent dragging
+    if (_isDraggingPermanent) {
+      setState(() {
+        _isDraggingPermanent = false;
+        _dragPermanentIndex = null;
+      });
+      return;
+    }
+
     if (!_isDragging) return;
 
     _isDragging = false;
@@ -1830,9 +1893,217 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
                   ),
               ],
             ),
+            if (kDebugMode)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Row(
+                  children: [
+                    FilterChip(
+                      selected: _godMode,
+                      label: const Text('GOD MODE'),
+                      onSelected: (v) => setState(() => _godMode = v),
+                      selectedColor: Colors.black,
+                      checkmarkColor: Colors.white,
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.edit),
+                      label: const Text('Edit Permanents'),
+                      onPressed: _openGodEditorDialog,
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: () {
+                        resetPermanentsToDefault();
+                        setState(() {});
+                      },
+                      child: const Text('Reset Permanents'),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
+    );
+  }
+
+  void _openGodEditorDialog() {
+    if (!kDebugMode) return;
+    final structs = getPermanentStructures();
+    int sel = 0;
+    final nameCtrl = TextEditingController(text: structs[sel].name);
+    final cx = TextEditingController(text: structs[sel].ax.toString());
+    final cy = TextEditingController(text: structs[sel].ay.toString());
+    final w = TextEditingController(text: structs[sel].w.toString());
+    final h = TextEditingController(text: structs[sel].h.toString());
+    final rx = TextEditingController(text: structs[sel].exclW.toString());
+    final ry = TextEditingController(text: structs[sel].exclH.toString());
+    final inf = TextEditingController(
+      text: (structs[sel].influenceR ?? 0).toString(),
+    );
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSB) => AlertDialog(
+            title: const Text('God Mode: Edit Permanent Structures'),
+            content: SizedBox(
+              width: 520,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButton<int>(
+                    value: sel,
+                    isExpanded: true,
+                    items: [
+                      for (int i = 0; i < structs.length; i++)
+                        DropdownMenuItem(
+                          value: i,
+                          child: Text(structs[i].name),
+                        ),
+                    ],
+                    onChanged: (v) {
+                      if (v == null) return;
+                      sel = v;
+                      nameCtrl.text = structs[sel].name;
+                      cx.text = structs[sel].ax.toString();
+                      cy.text = structs[sel].ay.toString();
+                      w.text = structs[sel].w.toString();
+                      h.text = structs[sel].h.toString();
+                      rx.text = structs[sel].exclW.toString();
+                      ry.text = structs[sel].exclH.toString();
+                      inf.text = (structs[sel].influenceR ?? 0).toString();
+                      setSB(() {});
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      SizedBox(
+                        width: 240,
+                        child: TextField(
+                          controller: nameCtrl,
+                          decoration: const InputDecoration(
+                            labelText: 'Name',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        width: 120,
+                        child: TextField(
+                          controller: cx,
+                          decoration: const InputDecoration(
+                            labelText: 'Bottom-right X',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                      SizedBox(
+                        width: 120,
+                        child: TextField(
+                          controller: cy,
+                          decoration: const InputDecoration(
+                            labelText: 'Bottom-right Y',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                      SizedBox(
+                        width: 120,
+                        child: TextField(
+                          controller: w,
+                          decoration: const InputDecoration(
+                            labelText: 'Footprint W',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                      SizedBox(
+                        width: 120,
+                        child: TextField(
+                          controller: h,
+                          decoration: const InputDecoration(
+                            labelText: 'Footprint H',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                      SizedBox(
+                        width: 120,
+                        child: TextField(
+                          controller: rx,
+                          decoration: const InputDecoration(
+                            labelText: 'No-build R X',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                      SizedBox(
+                        width: 120,
+                        child: TextField(
+                          controller: ry,
+                          decoration: const InputDecoration(
+                            labelText: 'No-build R Y',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                      SizedBox(
+                        width: 120,
+                        child: TextField(
+                          controller: inf,
+                          decoration: const InputDecoration(
+                            labelText: 'Influence R',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Close'),
+              ),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.save),
+                label: const Text('Apply'),
+                onPressed: () {
+                  final updated = getPermanentStructures()[sel].copyWith(
+                    name: nameCtrl.text.trim().isEmpty
+                        ? getPermanentStructures()[sel].name
+                        : nameCtrl.text.trim(),
+                    ax: int.tryParse(cx.text.trim()),
+                    ay: int.tryParse(cy.text.trim()),
+                    w: int.tryParse(w.text.trim()),
+                    h: int.tryParse(h.text.trim()),
+                    exclW: int.tryParse(rx.text.trim()),
+                    exclH: int.tryParse(ry.text.trim()),
+                    influenceR: int.tryParse(inf.text.trim()),
+                  );
+                  replacePermanentAt(sel, updated);
+                  setState(() {});
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
