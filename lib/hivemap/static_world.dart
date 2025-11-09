@@ -55,14 +55,14 @@ class PermanentStructure {
     influenceR: influenceR ?? this.influenceR,
   );
 
-  /// Center coordinates derived from bottom-right anchor and footprint size.
-  /// Note: Y uses subtraction so center stays correct on a Y-up game grid.
-  int get cx => ax - ((w - 1) ~/ 2);
-  int get cy => ay - ((h - 1) ~/ 2);
+  /// Center tile coordinates derived from bottom-right anchor and footprint size.
+  /// For even dimensions, this picks the lower/right-biased center tile.
+  /// Using: center offset = ceil((size-1)/2) = size~/2
+  int get cx => ax - (w ~/ 2);
+  int get cy => ay - (h ~/ 2);
 
-  /// Top-left of the footprint rectangle in tile coordinates.
-  (int x, int y) get footprintTopLeft =>
-      (cx - ((w - 1) ~/ 2), cy - ((h - 1) ~/ 2));
+  /// Top-left of the footprint rectangle in tile coordinates from bottom-right anchor.
+  (int x, int y) get footprintTopLeft => (ax - w + 1, ay - h + 1);
 
   /// Computed exclusion rectangle width/height from radius. If radius is 0,
   /// only the footprint area is excluded.
@@ -125,8 +125,8 @@ class PermanentStructure {
 const List<PermanentStructure> initialPermanentStructures = [
   PermanentStructure(
     name: 'Sunfire Castle',
-    ax: 602,
-    ay: 602, // 597 + 7 for bottom-right
+    ax: 597,
+    ay: 597, // bottom-right tile of the castle footprint
     w: 6,
     h: 6,
     exclW: 12,
@@ -137,6 +137,7 @@ const List<PermanentStructure> initialPermanentStructures = [
   // --- Turrets (2x2, perfect cross) — bottom-right anchors as specified
   PermanentStructure(name: 'Westplain Turret', ax: 594, ay: 604, w: 2, h: 2),
   PermanentStructure(name: 'Eastcourt Turret', ax: 604, ay: 594, w: 2, h: 2),
+
   PermanentStructure(name: 'Southwing Turret', ax: 594, ay: 594, w: 2, h: 2),
   PermanentStructure(name: 'Northground Turret', ax: 604, ay: 604, w: 2, h: 2),
 
@@ -297,7 +298,7 @@ List<PermanentStructure> getPermanentStructures() => currentPermanentStructures;
 
 // Temporary global toggle to hide permanents from rendering (visual only)
 // Keeps placement rules intact (exclusions still block placement).
-bool _permanentsHidden = true; // default to hidden as requested
+bool _permanentsHidden = false; // set default to visible
 bool arePermanentsHidden() => _permanentsHidden;
 void setPermanentsHidden(bool v) {
   _permanentsHidden = v;

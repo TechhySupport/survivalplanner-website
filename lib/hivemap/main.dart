@@ -9,7 +9,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart'
     show MatrixUtils, RenderBox, RenderRepaintBoundary;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'grid_renderer.dart';
+// import 'grid_renderer.dart'; // no longer used with square grid
+import 'square_grid_renderer.dart';
 import 'models.dart';
 import 'placement_rules.dart';
 import 'members.dart';
@@ -21,6 +22,7 @@ import '../services/map_service.dart';
 import '../services/loginscreen.dart';
 import 'package:image/image.dart' as img;
 import 'static_world.dart';
+import '../config/supabase_config.dart';
 
 // Lightweight metadata for saved maps (local or cloud)
 class _MapMeta {
@@ -115,6 +117,11 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
   // Drag move state for objects
   bool _isDragMoving = false;
   int? _dragMoveObjectIndex;
+
+  // Viewport panning in Select mode (drag to move map window)
+  bool _isViewportPanning = false;
+  int? _viewportPanLastGX;
+  int? _viewportPanLastGY;
 
   // God Mode: drag permanent structures (e.g., Sunfire Castle)
   bool _isDraggingPermanent = false;
@@ -215,6 +222,8 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
             0,
             1200 - _viewportSize,
           );
+          // With flipped projection, Y decreases downward; origin (top-left)
+          // should be centerY + half-height
           _originGameY = (obj.gameY - _viewportSize ~/ 2).clamp(
             0,
             1200 - _viewportSize,
@@ -578,14 +587,10 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
     final inv = _controller.value.clone()..invert();
     final scene = MatrixUtils.transformPoint(inv, local);
 
-    // Scene -> grid indices
-    const halfW = GridRenderer.halfW;
-    const halfH = GridRenderer.halfH;
-    final originX = _viewportSize * halfW;
-    final nx = (scene.dx - originX) / halfW;
-    final ny = (scene.dy) / halfH;
-    final gx = ((ny + nx) / 2).floor();
-    final gy = ((ny - nx) / 2).floor();
+    // Scene -> grid indices for orthographic square grid
+    const s = SquareGridRenderer.tileSize;
+    final gx = (scene.dx / s).floor();
+    final gy = (scene.dy / s).floor();
     if (gx < 0 || gy < 0 || gx >= _viewportSize || gy >= _viewportSize) return;
 
     // Grid indices -> game coordinates
@@ -616,7 +621,7 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
 
     // Don't place objects when select tool is active
     if (t == ObjectType.select) {
-      return;
+      return; // Do not attempt placement
     }
 
     // Check if trying to place a BT when one already exists
@@ -751,14 +756,10 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
     final inv = _controller.value.clone()..invert();
     final scene = MatrixUtils.transformPoint(inv, local);
 
-    // Scene -> grid indices
-    const halfW = GridRenderer.halfW;
-    const halfH = GridRenderer.halfH;
-    final originX = _viewportSize * halfW;
-    final nx = (scene.dx - originX) / halfW;
-    final ny = (scene.dy) / halfH;
-    final gx = ((ny + nx) / 2).floor();
-    final gy = ((ny - nx) / 2).floor();
+    // Scene -> grid indices for orthographic square grid
+    const s = SquareGridRenderer.tileSize;
+    final gx = (scene.dx / s).floor();
+    final gy = (scene.dy / s).floor();
     if (gx < 0 || gy < 0 || gx >= _viewportSize || gy >= _viewportSize) {
       _clearHover();
       return;
@@ -782,6 +783,16 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
   }
 
   void _handlePanStart(DragStartDetails details) {
+    // Select tool: initiate viewport panning instead of object drag/draw
+    if (_selected.type == ObjectType.select) {
+      final coords = _convertTapToGameCoords(details.globalPosition);
+      if (coords != null) {
+        _isViewportPanning = true;
+        _viewportPanLastGX = coords.x;
+        _viewportPanLastGY = coords.y;
+      }
+      return; // Do not run object placement logic
+    }
     // In God Mode, allow dragging of permanent structures when starting on them
     if (kDebugMode && _godMode) {
       final coords = _convertTapToGameCoords(details.globalPosition);
@@ -826,6 +837,31 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
   }
 
   void _handlePanUpdate(DragUpdateDetails details) {
+    // Handle viewport panning while in Select mode
+    if (_isViewportPanning) {
+      final coords = _convertTapToGameCoords(details.globalPosition);
+      if (coords != null &&
+          _viewportPanLastGX != null &&
+          _viewportPanLastGY != null) {
+        final dx = coords.x - _viewportPanLastGX!;
+        final dy = coords.y - _viewportPanLastGY!;
+        if (dx != 0 || dy != 0) {
+          setState(() {
+            // Move origin opposite of drag direction to simulate camera pan
+            _originGameX -= dx;
+            _originGameY -= dy;
+            if (_originGameX < 0) _originGameX = 0;
+            if (_originGameY < 0) _originGameY = 0;
+            final maxOrigin = worldMax - _viewportSize + 1;
+            if (_originGameX > maxOrigin) _originGameX = maxOrigin;
+            if (_originGameY > maxOrigin) _originGameY = maxOrigin;
+          });
+          _viewportPanLastGX = coords.x;
+          _viewportPanLastGY = coords.y;
+        }
+      }
+      return; // Skip other drag behaviors
+    }
     // Update permanent structure position while dragging in God Mode
     if (_isDraggingPermanent && _dragPermanentIndex != null) {
       final coords = _convertTapToGameCoords(details.globalPosition);
@@ -862,6 +898,12 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
   }
 
   void _handlePanEnd(DragEndDetails details) {
+    if (_isViewportPanning) {
+      _isViewportPanning = false;
+      _viewportPanLastGX = null;
+      _viewportPanLastGY = null;
+      return;
+    }
     // Finish God Mode permanent dragging
     if (_isDraggingPermanent) {
       setState(() {
@@ -886,18 +928,15 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
     final inv = _controller.value.clone()..invert();
     final scene = MatrixUtils.transformPoint(inv, local);
 
-    const halfW = GridRenderer.halfW;
-    const halfH = GridRenderer.halfH;
-    final originX = _viewportSize * halfW;
-    final nx = (scene.dx - originX) / halfW;
-    final ny = (scene.dy) / halfH;
-    final gx = ((ny + nx) / 2).floor();
-    final gy = ((ny - nx) / 2).floor();
+    const s = SquareGridRenderer.tileSize;
+    final gx = (scene.dx / s).floor();
+    final gy = (scene.dy / s).floor();
     if (gx < 0 || gy < 0 || gx >= _viewportSize || gy >= _viewportSize)
       return null;
 
-    final gameGX = _originGameX + gx;
-    final gameGY = _originGameY + gy;
+    // Axis swap: vertical screen (rows) -> game X, horizontal (cols) -> game Y
+    final gameGX = _originGameX + gy;
+    final gameGY = _originGameY + gx;
     return (x: gameGX, y: gameGY);
   }
 
@@ -982,8 +1021,9 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
     if (_isMapViewLocked) return; // Don't move if locked
 
     setState(() {
-      _originGameX += deltaX;
-      _originGameY += deltaY;
+      // Axis swap: vertical movements (deltaY) affect game X, horizontal (deltaX) affect game Y
+      _originGameX += deltaY;
+      _originGameY += deltaX;
 
       // Ensure we don't go below 0
       if (_originGameX < 0) _originGameX = 0;
@@ -1377,8 +1417,10 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
                   InteractiveViewer(
                     key: _sceneKey,
                     transformationController: _controller,
-                    minScale: 0.4,
-                    maxScale: 4.0,
+                    // Allow ultra-extreme zoom out/in
+                    // 0.001 = 0.1% scale (~1000x farther than 100% -> ~100000% zoom-out)
+                    minScale: 0.001,
+                    maxScale: 24.0,
                     constrained: false,
                     child: MouseRegion(
                       onHover: widget.readOnly ? null : _handleHover,
@@ -1389,12 +1431,14 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
                         onPanStart: widget.readOnly ? null : _handlePanStart,
                         onPanUpdate: widget.readOnly ? null : _handlePanUpdate,
                         onPanEnd: widget.readOnly ? null : _handlePanEnd,
-                        child: GridRenderer(
+                        // Swap renderer: use SquareGridRenderer for a normal grid
+                        child: SquareGridRenderer(
                           gridW: _viewportSize,
                           gridH: _viewportSize,
                           objects: _objects,
                           originGameX: _originGameX,
                           originGameY: _originGameY,
+                          axisSwapped: true,
                           highlightedIndex:
                               _highlightedIndex ?? _highlightMemberIndex,
                           showCoordinates: _showCoordinates,
@@ -1408,7 +1452,8 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
                               _isDragMoving && _dragMoveObjectIndex != null
                               ? _objects[_dragMoveObjectIndex!].type
                               : _selected.type,
-                          showCrosshair: _selected.type != ObjectType.select,
+                          showSelectedTileCoordinates:
+                              _selected.type == ObjectType.select,
                         ),
                       ),
                     ),
@@ -1608,21 +1653,19 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
                       top: -10000,
                       child: RepaintBoundary(
                         key: _exportKey,
-                        child: GridRenderer(
+                        child: SquareGridRenderer(
                           gridW: _exportSize,
                           gridH: _exportSize,
                           objects: _objects,
                           originGameX: _originGameX,
                           originGameY: _originGameY,
                           highlightedIndex: null,
-                          drawGrid: _exportShowGrid,
                           showCoordinates: _exportShowCoords,
                           hideRadius: _hideRadius,
                           showBuildingCoordinates:
                               false, // Don't show building coords in export
                           selectedTileGameX: null,
                           selectedTileGameY: null,
-                          showCrosshair: false, // No crosshair in export
                         ),
                       ),
                     ),
@@ -2568,12 +2611,9 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
     final rb = _viewportKey.currentContext?.findRenderObject() as RenderBox?;
     if (rb == null) return;
     final viewport = rb.size;
-    const halfW = GridRenderer.halfW;
-    const halfH = GridRenderer.halfH;
-    final originX = _viewportSize * halfW;
-    // Scene coords of tile center
-    final sx = originX + (cx - cy) * halfW;
-    final sy = (cx + cy) * halfH + halfH; // center of diamond
+    // Orthographic square grid centering with axis swap (screen X uses gameY, screen Y uses gameX)
+    final sx = (cy + 0.5) * SquareGridRenderer.tileSize;
+    final sy = (cx + 0.5) * SquareGridRenderer.tileSize;
     final scale = _controller.value.getMaxScaleOnAxis();
     final target = Offset(sx, sy);
     final viewCenter = Offset(viewport.width / 2, viewport.height / 2);
@@ -2594,6 +2634,7 @@ class _HiveMapEditorState extends State<HiveMapEditor> {
     if (_isMapViewLocked) return; // Don't move if locked
 
     int startX = gameX - (_viewportSize ~/ 2);
+    // Revert Y centering so requested center tile sits mid-viewport
     int startY = gameY - (_viewportSize ~/ 2);
     final maxStart = worldMax - _viewportSize + 1;
     startX = startX.clamp(0, maxStart);
@@ -4042,6 +4083,28 @@ class _ObjectMenu extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Supabase
+  await SupabaseConfig.initialize();
+
+  runApp(const HiveMapApp());
+}
+
+class HiveMapApp extends StatelessWidget {
+  const HiveMapApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'HiveMap Editor',
+      theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
+      home: const Scaffold(body: HiveMapEditor()),
     );
   }
 }

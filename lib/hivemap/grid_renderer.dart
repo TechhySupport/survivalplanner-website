@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'models.dart';
@@ -22,6 +23,10 @@ class GridRenderer extends StatelessWidget {
   final int? hoverGameY;
   final ObjectType? hoverObjectType; // type of object being hovered for preview
   final bool showCrosshair; // whether to show crosshair for placement
+  final bool
+  showSelectedTileCoordinates; // show inline coordinates in select mode
+  final bool
+  flipAxisDirection; // when true, invert numeric direction so X increases upward and Y decreases to the right
 
   static const double tileW = 60; // isometric diamond width
   static const double tileH = 30; // isometric diamond height
@@ -46,6 +51,8 @@ class GridRenderer extends StatelessWidget {
     this.hoverGameY,
     this.hoverObjectType,
     this.showCrosshair = false,
+    this.showSelectedTileCoordinates = false,
+    this.flipAxisDirection = false,
   });
 
   // Total bounding size for an isometric grid rectangle
@@ -78,6 +85,8 @@ class GridRenderer extends StatelessWidget {
           hoverGameY: hoverGameY,
           hoverObjectType: hoverObjectType,
           showCrosshair: showCrosshair,
+          showSelectedTileCoordinates: showSelectedTileCoordinates,
+          flipAxisDirection: flipAxisDirection,
         ),
       ),
     );
@@ -102,6 +111,8 @@ class _GridPainter extends CustomPainter {
   final int? hoverGameY;
   final ObjectType? hoverObjectType;
   final bool showCrosshair;
+  final bool showSelectedTileCoordinates;
+  final bool flipAxisDirection;
 
   static const double tileH = GridRenderer.tileH;
   static const double halfW = GridRenderer.halfW;
@@ -125,6 +136,8 @@ class _GridPainter extends CustomPainter {
     required this.hoverGameY,
     required this.hoverObjectType,
     required this.showCrosshair,
+    required this.showSelectedTileCoordinates,
+    required this.flipAxisDirection,
   });
 
   // Map an object to its short label
@@ -138,13 +151,14 @@ class _GridPainter extends CustomPainter {
         // Expect obj.name like BT1/BT2/BT3; fallback to BT
         String label = (obj.name.isNotEmpty) ? obj.name : 'BT';
         if (showBuildingCoordinates) {
-          label += '\ny=${obj.gameY} x=${obj.gameX}';
+          // Display raw game coordinates (match game input)
+          label += '\nX=${obj.gameX} Y=${obj.gameY}';
         }
         return label;
       case ObjectType.hq:
         String label = 'HQ';
         if (showBuildingCoordinates) {
-          label += '\ny=${obj.gameY} x=${obj.gameX}';
+          label += '\nX=${obj.gameX} Y=${obj.gameY}';
         }
         return label;
       case ObjectType.member:
@@ -168,7 +182,7 @@ class _GridPainter extends CustomPainter {
         }
 
         if (showBuildingCoordinates) {
-          label += '\ny=${obj.gameY} x=${obj.gameX}';
+          label += '\nX=${obj.gameX} Y=${obj.gameY}';
         }
         return label;
       case ObjectType.mountain:
@@ -180,9 +194,18 @@ class _GridPainter extends CustomPainter {
     }
   }
 
+  // TODO: Make (0,0) the bottom (red) corner and (1199,1199) the top (green) corner.
+  // X should increase going upward.
+  // Y should decrease going rightward.
+  // Flip or invert the coordinate math to match this orientation.
+  //
+  // final newX = baseX + (rowOffset * -1); // X increases upward
+  // final newY = baseY - columnOffset;     // Y decreases rightward
   Offset _tileTop(int x, int y) {
-    final sx = originX + (x - y) * halfW;
-    final sy = (x + y) * halfH;
+    // Flipped isometric projection per requested axis:
+    // X increases upward (top-right), Y decreases downward (bottom-right)
+    final sx = originX + (x + y) * halfW;
+    final sy = (y - x) * halfH;
     return Offset(sx, sy);
   }
 
@@ -222,14 +245,38 @@ class _GridPainter extends CustomPainter {
     int y,
     String text, {
     TextStyle style = const TextStyle(fontSize: 10, color: Colors.black87),
+    Color? backgroundColor,
+    EdgeInsets padding = const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+    Offset offset = Offset.zero,
+    double maxWidth = 80,
+    double borderRadius = 4,
   }) {
     final top = _tileTop(x, y);
-    final center = top.translate(0, tileH * 0.55);
+    final center = top
+        .translate(0, tileH * 0.55)
+        .translate(offset.dx, offset.dy);
     final tp = TextPainter(
       text: TextSpan(text: text, style: style),
       textAlign: TextAlign.center,
       textDirection: TextDirection.ltr,
-    )..layout(maxWidth: 80);
+    )..layout(maxWidth: maxWidth);
+
+    // Optional rounded background behind the text
+    if (backgroundColor != null) {
+      final rect = Rect.fromLTWH(
+        center.dx - tp.width / 2 - padding.left,
+        center.dy - tp.height / 2 - padding.top,
+        tp.width + padding.left + padding.right,
+        tp.height + padding.top + padding.bottom,
+      );
+      final rrect = RRect.fromRectAndRadius(
+        rect,
+        Radius.circular(borderRadius),
+      );
+      final bgPaint = Paint()..color = backgroundColor;
+      canvas.drawRRect(rrect, bgPaint);
+    }
+
     tp.paint(canvas, center - Offset(tp.width / 2, tp.height / 2));
   }
 
@@ -355,47 +402,34 @@ class _GridPainter extends CustomPainter {
       }
     }
 
-    // Axis labels around the map (original): X along TOP, Y along LEFT.
+    // Axis labels for flipped projection – still show raw game coordinates.
     if (showCoordinates) {
-      // Top axis: label each visible column with X value only
-      for (int x = 0; x < gridW; x++) {
-        final top = _tileTop(x, 0);
-        final gx = originGameX + x;
-        final tp = TextPainter(
-          text: TextSpan(
-            text: 'X=$gx',
-            style: const TextStyle(fontSize: 11, color: Colors.black45),
-          ),
-          textAlign: TextAlign.center,
-          textDirection: TextDirection.ltr,
-        )..layout(maxWidth: 100);
-        final pos = Offset(
-          top.dx - tp.width / 2,
-          (top.dy - 14).clamp(0, size.height),
+      // Top axis: X increases to the right (original orientation)
+      for (int col = 0; col < gridW; col++) {
+        final xVal = originGameX + col;
+        _drawLabel(
+          canvas,
+          col,
+          0,
+          'X=$xVal',
+          style: const TextStyle(fontSize: 11, color: Colors.black54),
+          offset: const Offset(0, -18),
+          backgroundColor: Colors.white.withOpacity(0.75),
         );
-        tp.paint(canvas, pos);
       }
-      // Left axis: label each visible row with Y value only
-      for (int y = 0; y < gridH; y++) {
-        final topLeft = _tileTop(0, y);
-        final gy = originGameY + y;
-        final tp = TextPainter(
-          text: TextSpan(
-            text: 'Y=$gy',
-            style: const TextStyle(fontSize: 11, color: Colors.black45),
-          ),
-          textAlign: TextAlign.right,
-          textDirection: TextDirection.ltr,
-        )..layout(maxWidth: 100);
-        final dx = (topLeft.dx - halfW - 8 - tp.width).clamp(
-          0.0,
-          size.width - tp.width,
+      // Left axis: Y increases downward (original orientation)
+      for (int row = 0; row < gridH; row++) {
+        final yVal = originGameY + row;
+        _drawLabel(
+          canvas,
+          0,
+          row,
+          'Y=$yVal',
+          style: const TextStyle(fontSize: 11, color: Colors.black54),
+          offset: const Offset(-46, 0),
+          backgroundColor: Colors.white.withOpacity(0.75),
+          maxWidth: 60,
         );
-        final dy = (topLeft.dy + halfH - tp.height / 2).clamp(
-          0.0,
-          size.height - tp.height,
-        );
-        tp.paint(canvas, Offset(dx, dy));
       }
     }
 
@@ -465,6 +499,19 @@ class _GridPainter extends CustomPainter {
           }
         }
 
+        // Highlight the raw anchor (bottom-right of footprint) explicitly
+        final avx = ps.ax - originGameX;
+        final avy = ps.ay - originGameY;
+        if (avx >= 0 && avy >= 0 && avx < gridW && avy < gridH) {
+          canvas.drawPath(
+            _diamondPathAt(avx, avy),
+            Paint()
+              ..color = Colors.orange.withOpacity(0.95)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2.2,
+          );
+        }
+
         // Draw optional exclusion zone highlight using radius -> width formula
         final ew = ps.exclusionWidth;
         final eh = ps.exclusionHeight;
@@ -499,15 +546,27 @@ class _GridPainter extends CustomPainter {
         final atx = ps.cx - originGameX;
         final aty = ps.cy - originGameY;
         if (atx >= 0 && aty >= 0 && atx < gridW && aty < gridH) {
+          // Permanent structures are already defined in absolute game coordinates
+          // Just use them directly - no transformation needed
+          final centerAxisX = ps.cx;
+          final centerAxisY = ps.cy;
+          final anchorX = ps.ax;
+          final anchorY = ps.ay;
+          // Footprint corners in game coordinates
+          final (tlx, tly) = ps.footprintTopLeft;
+          final brx = ps.ax;
+          final bry = ps.ay;
           String labelText = ps.name;
           final lname2 = ps.name.toLowerCase();
           if (lname2.contains('turret') && castle != null) {
             final dx = ps.cx - castle.cx;
             final dy = ps.cy - castle.cy;
+            // Align names with in-game references:
+            // Southwing is (-X,-Y), Northground is (+X,+Y)
             if (dx > 0 && dy > 0) {
-              labelText = 'Southwing Turret'; // (+X,+Y) swapped per request
+              labelText = 'Northground Turret'; // (+X,+Y)
             } else if (dx < 0 && dy < 0) {
-              labelText = 'Northground Turret'; // (-X,-Y) swapped per request
+              labelText = 'Southwing Turret'; // (-X,-Y)
             } else if (dx > 0 && dy < 0) {
               labelText = 'Eastcourt Turret'; // (+X,-Y)
             } else if (dx < 0 && dy > 0) {
@@ -516,16 +575,68 @@ class _GridPainter extends CustomPainter {
               labelText = 'Turret';
             }
           }
+          // Append both anchor and center coordinates for clarity
+          labelText +=
+              '\nCenter X=$centerAxisX Y=$centerAxisY'
+              '\nAnchor X=$anchorX Y=$anchorY'
+              '\nTL($tlx,$tly) BR($brx,$bry)';
+          // Determine appearance and offset to reduce overlap for ALL permanents
+          final isCastleLabel = lname2.contains('castle');
+          final isTurretLabel = lname2.contains('turret');
+
+          // Radial screen-space offset away from the castle to avoid overlap.
+          // Works for turrets and any other permanent, not just vertical.
+          Offset radialOffset = Offset.zero;
+          if (castle != null && !isCastleLabel) {
+            final dxTiles = ps.cx - castle.cx;
+            final dyTiles = ps.cy - castle.cy;
+            // Convert tile delta to isometric screen delta
+            final screenDx = (dxTiles - dyTiles) * halfW;
+            final screenDy = (dxTiles + dyTiles) * halfH;
+            final mag = math.sqrt(screenDx * screenDx + screenDy * screenDy);
+            if (mag > 0) {
+              const double d = 18.0; // pixel push distance
+              final scale = d / mag;
+              radialOffset = Offset(screenDx * scale, screenDy * scale);
+            } else {
+              // Same tile as castle? Nudge upward a bit.
+              radialOffset = const Offset(0, -18);
+            }
+          }
+          final textColor = isCastleLabel
+              ? Colors.red.shade900
+              : (isTurretLabel ? Colors.green.shade900 : Colors.black);
           _drawLabel(
             canvas,
             atx,
             aty,
             labelText,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: Colors.black,
+              color: textColor,
             ),
+            backgroundColor: Colors.white.withOpacity(0.82),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            offset: radialOffset,
+            maxWidth: 180,
+            borderRadius: 6,
+          );
+          // Draw a small center marker cross for debug
+          final top = _tileTop(atx, aty).translate(0, tileH * 0.55);
+          canvas.drawLine(
+            top.translate(-6, 0),
+            top.translate(6, 0),
+            Paint()
+              ..color = Colors.black
+              ..strokeWidth = 2,
+          );
+          canvas.drawLine(
+            top.translate(0, -6),
+            top.translate(0, 6),
+            Paint()
+              ..color = Colors.black
+              ..strokeWidth = 2,
           );
         }
       }
@@ -679,6 +790,24 @@ class _GridPainter extends CustomPainter {
           fill: Colors.yellow.withOpacity(0.18),
           stroke: Colors.orange.withOpacity(0.8),
         );
+        if (showSelectedTileCoordinates) {
+          // Show the raw game coordinates - selectedTileGameX/Y are already absolute
+          _drawLabel(
+            canvas,
+            tx,
+            ty,
+            'X=$selectedTileGameX Y=$selectedTileGameY',
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Colors.black,
+            ),
+            backgroundColor: Colors.white.withOpacity(0.82),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            maxWidth: 120,
+            borderRadius: 6,
+          );
+        }
         if (showCoordinates && showCrosshair) {
           // Crosshair lines following isometric grid orientation - full grid
           final paint = Paint()
