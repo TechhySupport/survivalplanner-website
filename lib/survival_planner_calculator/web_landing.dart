@@ -154,7 +154,7 @@ class _TopNavBar extends StatelessWidget {
                     automaticallyImplyLeading: false,
                     title: const Text('Hive Map Editor'),
                   ),
-                  body: const HiveMapEditor(),
+                  body: const HiveMapEditorApp(),
                 ),
               ),
             );

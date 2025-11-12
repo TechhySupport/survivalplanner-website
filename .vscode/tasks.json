@@ -13,6 +13,17 @@
 			"label": "Flutter pub get",
 			"type": "shell",
 			"command": "flutter pub get"
+		},
+		{
+			"label": "Run HiveMap Editor Web",
+			"type": "shell",
+			"command": "flutter run -d chrome",
+			"args": [
+				"-t",
+				"lib/hivemap/editor_main.dart"
+			],
+			"isBackground": true,
+			"group": "build"
 		}
 	]
 }

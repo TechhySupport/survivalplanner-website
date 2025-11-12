@@ -27,7 +27,7 @@ import 'event_page.dart';
 import '../services/analytics_service.dart';
 // route logging removed
 import 'web_landing.dart';
-import '../hivemap/hivemap_screen.dart';
+// Legacy hive map routes removed; use minimal editor directly
 import '../hivemap/main.dart';
 
 // Clean single implementation of Survival Planner main entry.
@@ -99,7 +99,7 @@ class MyApp extends StatelessWidget {
                 name == 'file:hivemap_editor.dart' ||
                 name == '/file:hivemap_editor.dart') {
               return MaterialPageRoute(
-                builder: (_) => const HiveMapEditor(),
+                builder: (_) => const HiveMapEditorApp(),
                 settings: settings,
               );
             }
@@ -107,18 +107,11 @@ class MyApp extends StatelessWidget {
             if (uri.pathSegments.length == 1 &&
                 uri.pathSegments[0] == 'hivemap') {
               return MaterialPageRoute(
-                builder: (_) => const HiveMapEditor(),
+                builder: (_) => const HiveMapEditorApp(),
                 settings: settings,
               );
             }
-            if (uri.pathSegments.length == 2 && uri.pathSegments[0] == 'map') {
-              final slug = uri.pathSegments[1];
-              final canEdit = uri.queryParameters['edit'] == '1';
-              return MaterialPageRoute(
-                builder: (_) => HiveMapScreen(slug: slug, wantEdit: canEdit),
-                settings: settings,
-              );
-            }
+            // Legacy shared map route (/map/:slug) removed with legacy editor
           }
           return null; // default routing
         },
