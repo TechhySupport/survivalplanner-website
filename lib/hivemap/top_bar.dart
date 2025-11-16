@@ -3,35 +3,41 @@ import 'package:flutter/material.dart';
 class HiveMapTopBar extends StatelessWidget {
   final String mapName;
   final VoidCallback onEditMapName;
-  final VoidCallback onUndo;
-  final VoidCallback onRedo;
   final VoidCallback onReset;
   final VoidCallback onSave;
   final VoidCallback onOpen;
   final VoidCallback onDelete;
   final bool showMembers;
   final VoidCallback onToggleShowMembers;
-  final bool canUndo;
-  final bool canRedo;
   final int viewportSize;
   final ValueChanged<int> onViewportSizeChanged;
+  final VoidCallback onShare;
+  final VoidCallback onExportJpeg;
+  final VoidCallback onShowLogs;
+  final VoidCallback onUndo;
+  final VoidCallback onRedo;
+  final bool canUndo;
+  final bool canRedo;
 
   const HiveMapTopBar({
     super.key,
     required this.mapName,
     required this.onEditMapName,
-    required this.onUndo,
-    required this.onRedo,
     required this.onReset,
     required this.onSave,
     required this.onOpen,
     required this.onDelete,
     required this.showMembers,
     required this.onToggleShowMembers,
-    required this.canUndo,
-    required this.canRedo,
     required this.viewportSize,
     required this.onViewportSizeChanged,
+    required this.onShare,
+    required this.onExportJpeg,
+    required this.onShowLogs,
+    required this.onUndo,
+    required this.onRedo,
+    required this.canUndo,
+    required this.canRedo,
   });
 
   @override
@@ -40,13 +46,11 @@ class HiveMapTopBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(
-          bottom: BorderSide(color: Colors.grey.shade300),
-        ),
+        border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
       ),
       child: Row(
         children: [
-          // File menu
+          // File dropdown menu
           PopupMenuButton<String>(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -58,83 +62,98 @@ class HiveMapTopBar extends StatelessWidget {
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                   ),
                   const SizedBox(width: 4),
-                  Icon(Icons.arrow_drop_down, size: 20, color: Colors.grey.shade600),
+                  Icon(
+                    Icons.arrow_drop_down,
+                    size: 20,
+                    color: Colors.grey.shade600,
+                  ),
                 ],
               ),
             ),
             itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'undo',
-                enabled: canUndo,
+              const PopupMenuItem(
+                value: 'share',
                 child: Row(
                   children: [
-                    Icon(Icons.undo, size: 18, color: canUndo ? Colors.black87 : Colors.grey),
-                    const SizedBox(width: 8),
-                    Text('Undo', style: TextStyle(color: canUndo ? Colors.black87 : Colors.grey)),
+                    Icon(Icons.share, size: 18),
+                    SizedBox(width: 8),
+                    Text('Share'),
                   ],
                 ),
               ),
-              PopupMenuItem(
-                value: 'redo',
-                enabled: canRedo,
+              const PopupMenuItem(
+                value: 'export',
                 child: Row(
                   children: [
-                    Icon(Icons.redo, size: 18, color: canRedo ? Colors.black87 : Colors.grey),
-                    const SizedBox(width: 8),
-                    Text('Redo', style: TextStyle(color: canRedo ? Colors.black87 : Colors.grey)),
+                    Icon(Icons.image, size: 18),
+                    SizedBox(width: 8),
+                    Text('Export to JPEG'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'logs',
+                child: Row(
+                  children: [
+                    Icon(Icons.history, size: 18),
+                    SizedBox(width: 8),
+                    Text('Logs'),
                   ],
                 ),
               ),
             ],
             onSelected: (value) {
-              if (value == 'undo') onUndo();
-              if (value == 'redo') onRedo();
+              if (value == 'share') onShare();
+              if (value == 'export') onExportJpeg();
+              if (value == 'logs') onShowLogs();
             },
           ),
-          
+
           const SizedBox(width: 8),
-          
-          // Show Members button
-          TextButton(
-            onPressed: onToggleShowMembers,
-            style: TextButton.styleFrom(
-              backgroundColor: showMembers ? Colors.blue.shade50 : Colors.transparent,
-              foregroundColor: showMembers ? Colors.blue.shade700 : Colors.black87,
-            ),
-            child: const Text('Show Members'),
-          ),
-          
-          const SizedBox(width: 8),
-          
-          // Undo button - right under File
+
+          // Undo button
           IconButton(
             icon: const Icon(Icons.undo),
             onPressed: canUndo ? onUndo : null,
             tooltip: 'Undo',
             iconSize: 20,
           ),
-          
-          // Redo button - right under File
+
+          // Redo button
           IconButton(
             icon: const Icon(Icons.redo),
             onPressed: canRedo ? onRedo : null,
             tooltip: 'Redo',
             iconSize: 20,
           ),
-          
+
+          const SizedBox(width: 8),
+
+          // Show Members button
+          TextButton(
+            onPressed: onToggleShowMembers,
+            style: TextButton.styleFrom(
+              backgroundColor: showMembers
+                  ? Colors.blue.shade50
+                  : Colors.transparent,
+              foregroundColor: showMembers
+                  ? Colors.blue.shade700
+                  : Colors.black87,
+            ),
+            child: const Text('Show Members'),
+          ),
+
           const SizedBox(width: 16),
-          
+
           // Reset button
           TextButton(
             onPressed: onReset,
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red.shade700,
-            ),
+            style: TextButton.styleFrom(foregroundColor: Colors.red.shade700),
             child: const Text('Reset'),
           ),
-          
+
           const Spacer(),
-          
+
           // View Size buttons
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -148,9 +167,9 @@ class HiveMapTopBar extends StatelessWidget {
               _buildViewSizeButton(50, viewportSize, onViewportSizeChanged),
             ],
           ),
-          
+
           const SizedBox(width: 16),
-          
+
           // Map name
           InkWell(
             onTap: onEditMapName,
@@ -176,9 +195,9 @@ class HiveMapTopBar extends StatelessWidget {
               ),
             ),
           ),
-          
+
           const SizedBox(width: 8),
-          
+
           // Save button
           ElevatedButton.icon(
             onPressed: onSave,
@@ -188,9 +207,9 @@ class HiveMapTopBar extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             ),
           ),
-          
+
           const SizedBox(width: 8),
-          
+
           // Open button
           OutlinedButton.icon(
             onPressed: onOpen,
@@ -200,9 +219,9 @@ class HiveMapTopBar extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             ),
           ),
-          
+
           const SizedBox(width: 8),
-          
+
           // Delete button
           OutlinedButton.icon(
             onPressed: onDelete,
@@ -219,7 +238,11 @@ class HiveMapTopBar extends StatelessWidget {
     );
   }
 
-  static Widget _buildViewSizeButton(int size, int currentSize, ValueChanged<int> onChanged) {
+  static Widget _buildViewSizeButton(
+    int size,
+    int currentSize,
+    ValueChanged<int> onChanged,
+  ) {
     final isSelected = currentSize == size;
     return ElevatedButton(
       onPressed: () => onChanged(size),

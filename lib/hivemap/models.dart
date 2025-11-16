@@ -75,12 +75,12 @@ class MapObject {
       case BuildingType.eastcourtTurret:
       case BuildingType.southwingTurret:
       case BuildingType.northgroundTurret:
+        return 2; // 2x2 for turrets
       case BuildingType.btMember1:
       case BuildingType.btMember2:
       case BuildingType.btMember3:
-        return 2; // 2x2 for turrets and BT members
       case BuildingType.hq:
-        return 3; // 3x3 for HQ
+        return 3; // 3x3 for BT members and HQ
       default:
         return 1; // 1x1 for traps and flags
     }
@@ -114,8 +114,10 @@ class MapObject {
         return 6;
       case BuildingType.hq:
         return 15; // 15x15 exclusion radius for HQ
+      case BuildingType.flag:
+        return 7; // 7x7 exclusion radius for Flag
       default:
-        return 0; // No exclusion zone for turrets, BT members, traps, flags
+        return 0; // No exclusion zone for turrets, BT members, traps
     }
   }
 
@@ -204,9 +206,9 @@ class MapObject {
   Color get color {
     switch (type) {
       case BuildingType.btMember1:
-      return const Color.fromARGB(255, 166, 0, 255);
+        return const Color.fromARGB(255, 166, 0, 255);
       case BuildingType.btMember2:
-      return const Color.fromARGB(255, 30, 223, 12);
+        return const Color.fromARGB(255, 30, 223, 12);
       case BuildingType.btMember3:
         return Colors.orange;
       case BuildingType.bearTrap1:

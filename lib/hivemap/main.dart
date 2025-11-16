@@ -52,13 +52,15 @@ class _HiveMapHomeState extends State<HiveMapHome> {
   int _centerX = 600; // Current center X coordinate
   int _centerY = 600; // Current center Y coordinate
   DateTime? _lastPlacementTime; // For calculating ping between placements
-  
+
   // Map management
   String _mapName = 'New Map';
   final List<List<MapObject>> _undoStack = [];
   final List<List<MapObject>> _redoStack = [];
   bool _showMembers = false;
-  
+  bool _showCoordinates = false;
+  bool _hideRadius = false;
+
   // Member management - persistent storage
   final Map<BuildingType, List<Member>> _members = {
     BuildingType.btMember1: [],
@@ -77,8 +79,6 @@ class _HiveMapHomeState extends State<HiveMapHome> {
       _addDebugLog('INIT: Map centered at (600, 600)');
     });
   }
-
-
 
   void _initializePermanentBuildings() {
     _objects = [
@@ -282,29 +282,36 @@ class _HiveMapHomeState extends State<HiveMapHome> {
     _lastPlacementTime = clickTime;
 
     // Check placement restrictions
-    // Only 1 Bear Trap (any type) can be placed
-    if (obj.type == BuildingType.bearTrap1 ||
-        obj.type == BuildingType.bearTrap2 ||
-        obj.type == BuildingType.bearTrap3) {
-      final existingBearTraps = _objects.where((o) =>
-          o.type == BuildingType.bearTrap1 ||
-          o.type == BuildingType.bearTrap2 ||
-          o.type == BuildingType.bearTrap3).length;
-      if (existingBearTraps >= 1) {
-        _addDebugLog(
-          'BLOCKED: Only 1 Bear Trap can be placed at a time',
-        );
+    // Only 1 of each Bear Trap type can be placed
+    if (obj.type == BuildingType.bearTrap1) {
+      final existing = _objects.where((o) => o.type == BuildingType.bearTrap1).length;
+      if (existing >= 1) {
+        _addDebugLog('BLOCKED: Only 1 Bear Trap 1 can be placed');
+        return;
+      }
+    }
+    if (obj.type == BuildingType.bearTrap2) {
+      final existing = _objects.where((o) => o.type == BuildingType.bearTrap2).length;
+      if (existing >= 1) {
+        _addDebugLog('BLOCKED: Only 1 Bear Trap 2 can be placed');
+        return;
+      }
+    }
+    if (obj.type == BuildingType.bearTrap3) {
+      final existing = _objects.where((o) => o.type == BuildingType.bearTrap3).length;
+      if (existing >= 1) {
+        _addDebugLog('BLOCKED: Only 1 Bear Trap 3 can be placed');
         return;
       }
     }
 
     // Only 2 HQs can be placed
     if (obj.type == BuildingType.hq) {
-      final existingHQs = _objects.where((o) => o.type == BuildingType.hq).length;
+      final existingHQs = _objects
+          .where((o) => o.type == BuildingType.hq)
+          .length;
       if (existingHQs >= 2) {
-        _addDebugLog(
-          'BLOCKED: Only 2 HQs can be placed',
-        );
+        _addDebugLog('BLOCKED: Only 2 HQs can be placed');
         return;
       }
     }
@@ -334,7 +341,7 @@ class _HiveMapHomeState extends State<HiveMapHome> {
 
     // Save to undo stack before placing
     _saveToUndoStack();
-    
+
     // Add object - setState will trigger rebuild but with optimizations
     _objects.add(obj);
     setState(() {});
@@ -384,7 +391,7 @@ class _HiveMapHomeState extends State<HiveMapHome> {
     final startTime = DateTime.now();
 
     _saveToUndoStack();
-    
+
     setState(() {
       _objects.removeWhere((o) => o.id == obj.id);
     });
@@ -450,6 +457,20 @@ class _HiveMapHomeState extends State<HiveMapHome> {
     _addDebugLog('SHOW MEMBERS: Dialog opened');
   }
 
+  void _toggleShowCoordinates() {
+    setState(() {
+      _showCoordinates = !_showCoordinates;
+    });
+    _addDebugLog('SHOW COORDINATES: ${_showCoordinates ? "ON" : "OFF"}');
+  }
+
+  void _toggleHideRadius() {
+    setState(() {
+      _hideRadius = !_hideRadius;
+    });
+    _addDebugLog('HIDE RADIUS: ${_hideRadius ? "ON" : "OFF"}');
+  }
+
   void _saveMap() {
     _addDebugLog('SAVE: Map saved (not yet implemented)');
     // TODO: Implement save functionality
@@ -484,11 +505,138 @@ class _HiveMapHomeState extends State<HiveMapHome> {
           TextButton(
             onPressed: () {
               setState(() {
-                _mapName = controller.text.isEmpty ? 'New Map' : controller.text;
+                _mapName = controller.text.isEmpty
+                    ? 'New Map'
+                    : controller.text;
               });
               Navigator.pop(context);
             },
             child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showShareDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Share Map'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('Create a link to share this map:'),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () {
+                _addDebugLog('SHARE: Created view-only link');
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'View-only link created (not yet implemented)',
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.visibility),
+              label: const Text('Create View-Only Link'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: () {
+                _addDebugLog('SHARE: Created view & edit link');
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'View & Edit link created (not yet implemented)',
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.edit),
+              label: const Text('Create View & Edit Link'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _exportToJpeg() {
+    _addDebugLog('EXPORT: Exporting map to JPEG');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Export to JPEG (not yet implemented)')),
+    );
+    // TODO: Implement JPEG export functionality
+  }
+
+  void _showLogsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.history),
+            const SizedBox(width: 8),
+            const Text('Activity Logs'),
+            const Spacer(),
+            IconButton(
+              icon: const Icon(Icons.clear_all),
+              onPressed: () {
+                _clearDebugLogs();
+                Navigator.pop(context);
+              },
+              tooltip: 'Clear Logs',
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 600,
+          height: 400,
+          child: _debugLogs.isEmpty
+              ? const Center(child: Text('No activity logs yet'))
+              : ListView.builder(
+                  itemCount: _debugLogs.length,
+                  itemBuilder: (context, index) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: index.isEven ? Colors.grey[100] : Colors.white,
+                      ),
+                      child: Text(
+                        _debugLogs[index],
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
           ),
         ],
       ),
@@ -503,18 +651,21 @@ class _HiveMapHomeState extends State<HiveMapHome> {
           HiveMapTopBar(
             mapName: _mapName,
             onEditMapName: _editMapName,
-            onUndo: _undo,
-            onRedo: _redo,
             onReset: _resetMap,
             onSave: _saveMap,
             onOpen: _openMap,
             onDelete: _deleteMap,
             showMembers: _showMembers,
             onToggleShowMembers: _toggleShowMembers,
-            canUndo: _undoStack.isNotEmpty,
-            canRedo: _redoStack.isNotEmpty,
             viewportSize: _viewportSize,
             onViewportSizeChanged: _updateViewportSize,
+            onShare: _showShareDialog,
+            onExportJpeg: _exportToJpeg,
+            onShowLogs: _showLogsDialog,
+            onUndo: _undo,
+            onRedo: _redo,
+            canUndo: _undoStack.isNotEmpty,
+            canRedo: _redoStack.isNotEmpty,
           ),
           Expanded(
             child: Container(
