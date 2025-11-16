@@ -12,6 +12,17 @@ class IsometricGridPainter extends CustomPainter {
   final int centerX; // Center X coordinate (e.g., 600)
   final int centerY; // Center Y coordinate (e.g., 600)
 
+  // Cache paint objects
+  static final _gridPaint = Paint()
+    ..color = Colors.grey.withOpacity(0.3)
+    ..strokeWidth = 1.0
+    ..style = PaintingStyle.stroke;
+  
+  static final _borderPaint = Paint()
+    ..color = Colors.black
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 2;
+
   IsometricGridPainter({
     required this.viewportSize,
     required this.scale,
@@ -23,10 +34,7 @@ class IsometricGridPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.grey.withOpacity(0.3)
-      ..strokeWidth = 1.0
-      ..style = PaintingStyle.stroke;
+    final paint = _gridPaint;
 
     // Calculate scale based on viewportSize
     // viewportSize controls how much of the map is visible
@@ -76,8 +84,46 @@ class IsometricGridPainter extends CustomPainter {
       canvas.drawLine(start, end, paint);
     }
 
+    // Draw exclusion zones as light red tiles
+    final exclusionPaint = Paint()
+      ..color = Colors.red.withOpacity(0.15)
+      ..style = PaintingStyle.fill;
+
+    for (final obj in objects) {
+      if (obj.exclusionRadiusWidth > 0) {
+        // Calculate exclusion zone bounds
+        final centerX = obj.x + (obj.tileWidth / 2);
+        final centerY = obj.y + (obj.tileHeight / 2);
+        final halfRadius = obj.exclusionRadiusWidth / 2;
+        
+        final exMinX = (centerX - halfRadius).round().clamp(minX, maxX);
+        final exMaxX = (centerX + halfRadius).round().clamp(minX, maxX);
+        final exMinY = (centerY - halfRadius).round().clamp(minY, maxY);
+        final exMaxY = (centerY + halfRadius).round().clamp(minY, maxY);
+
+        // Draw each tile in the exclusion zone
+        for (int x = exMinX; x < exMaxX; x++) {
+          for (int y = exMinY; y < exMaxY; y++) {
+            // Draw tile as light red diamond
+            final topLeft = logicalToScreen(x, y + 1);
+            final topRight = logicalToScreen(x + 1, y + 1);
+            final bottomRight = logicalToScreen(x + 1, y);
+            final bottomLeft = logicalToScreen(x, y);
+
+            final path = Path()
+              ..moveTo(topLeft.dx, topLeft.dy)
+              ..lineTo(topRight.dx, topRight.dy)
+              ..lineTo(bottomRight.dx, bottomRight.dy)
+              ..lineTo(bottomLeft.dx, bottomLeft.dy)
+              ..close();
+
+            canvas.drawPath(path, exclusionPaint);
+          }
+        }
+      }
+    }
+
     // Draw placed objects
-    final textPainter = TextPainter(textDirection: TextDirection.ltr);
     for (final obj in objects) {
       // Draw building covering multiple tiles
       final width = obj.tileWidth;
@@ -111,28 +157,27 @@ class IsometricGridPainter extends CustomPainter {
       canvas.drawPath(path, objPaint);
 
       // Draw border
-      final borderPaint = Paint()
-        ..color = Colors.black
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2;
-      canvas.drawPath(path, borderPaint);
+      canvas.drawPath(path, _borderPaint);
 
-      // Draw object label at center
+      // Draw object label at center - create TextPainter only when needed
       final centerPos = logicalToScreen(
         obj.x + (width ~/ 2),
         obj.y + (height ~/ 2),
       );
 
-      textPainter.text = TextSpan(
-        text: obj.displayName,
-        style: const TextStyle(
-          color: Colors.black,
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          backgroundColor: Colors.white70,
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: obj.displayName,
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            backgroundColor: Colors.white70,
+          ),
         ),
-      );
-      textPainter.layout();
+        textDirection: TextDirection.ltr,
+      )..layout();
+      
       textPainter.paint(
         canvas,
         centerPos - Offset(textPainter.width / 2, textPainter.height / 2),
@@ -142,10 +187,12 @@ class IsometricGridPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant IsometricGridPainter oldDelegate) {
+    // Only repaint if view parameters change or object count changes
+    // This prevents repainting when the same objects list is passed
     return oldDelegate.viewportSize != viewportSize ||
         oldDelegate.scale != scale ||
         oldDelegate.panOffset != panOffset ||
-        oldDelegate.objects != objects ||
+        oldDelegate.objects.length != objects.length ||
         oldDelegate.centerX != centerX ||
         oldDelegate.centerY != centerY;
   }
@@ -275,16 +322,18 @@ class _IsometricGridWidgetState extends State<IsometricGridWidget> {
             // Increase pan sensitivity by 2x for faster dragging
             widget.onPanUpdate(widget.panOffset + (details.delta * 5.0));
           },
-          child: CustomPaint(
-            painter: IsometricGridPainter(
-              viewportSize: widget.viewportSize,
-              scale: widget.scale,
-              panOffset: widget.panOffset,
-              objects: widget.objects,
-              centerX: widget.centerX,
-              centerY: widget.centerY,
+          child: RepaintBoundary(
+            child: CustomPaint(
+              painter: IsometricGridPainter(
+                viewportSize: widget.viewportSize,
+                scale: widget.scale,
+                panOffset: widget.panOffset,
+                objects: widget.objects,
+                centerX: widget.centerX,
+                centerY: widget.centerY,
+              ),
+              child: Container(),
             ),
-            child: Container(),
           ),
         ),
       ),

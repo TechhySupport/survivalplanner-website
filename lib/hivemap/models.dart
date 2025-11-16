@@ -75,9 +75,14 @@ class MapObject {
       case BuildingType.eastcourtTurret:
       case BuildingType.southwingTurret:
       case BuildingType.northgroundTurret:
-        return 2; // 2x2 turrets
+      case BuildingType.btMember1:
+      case BuildingType.btMember2:
+      case BuildingType.btMember3:
+        return 2; // 2x2 for turrets and BT members
+      case BuildingType.hq:
+        return 3; // 3x3 for HQ
       default:
-        return 1; // 1x1 for BT members, traps, flags, HQ
+        return 1; // 1x1 for traps and flags
     }
   }
 
@@ -89,7 +94,7 @@ class MapObject {
   int get exclusionRadiusWidth {
     switch (type) {
       case BuildingType.sunfireCastle:
-        return 12;
+        return 30; // 10x10 exclusion radius for Sunfire Castle
       case BuildingType.stronghold1:
       case BuildingType.stronghold2:
       case BuildingType.stronghold3:
@@ -107,8 +112,10 @@ class MapObject {
       case BuildingType.fortress11:
       case BuildingType.fortress12:
         return 6;
+      case BuildingType.hq:
+        return 15; // 15x15 exclusion radius for HQ
       default:
-        return 0; // No exclusion zone for turrets, BT members, traps, flags, HQ
+        return 0; // No exclusion zone for turrets, BT members, traps, flags
     }
   }
 
@@ -197,7 +204,9 @@ class MapObject {
   Color get color {
     switch (type) {
       case BuildingType.btMember1:
+      return const Color.fromARGB(255, 166, 0, 255);
       case BuildingType.btMember2:
+      return const Color.fromARGB(255, 30, 223, 12);
       case BuildingType.btMember3:
         return Colors.orange;
       case BuildingType.bearTrap1:
@@ -209,7 +218,7 @@ class MapObject {
       case BuildingType.hq:
         return Colors.deepPurple;
       case BuildingType.sunfireCastle:
-        return Colors.red;
+        return Colors.red.shade900; // Dark red
       case BuildingType.westplainTurret:
       case BuildingType.eastcourtTurret:
       case BuildingType.southwingTurret:

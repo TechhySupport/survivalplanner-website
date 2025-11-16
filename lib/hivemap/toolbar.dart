@@ -185,19 +185,6 @@ class _HiveMapToolbarState extends State<HiveMapToolbar> {
             const VerticalDivider(),
             const SizedBox(width: 16),
 
-            // Viewport Size Selection
-            const Text('View Size: '),
-            const SizedBox(width: 8),
-            _buildCellSizeButton(15),
-            const SizedBox(width: 4),
-            _buildCellSizeButton(30),
-            const SizedBox(width: 4),
-            _buildCellSizeButton(50),
-
-            const SizedBox(width: 32),
-            const VerticalDivider(),
-            const SizedBox(width: 16),
-
             // Building Selection
             const Text('Place: '),
             const SizedBox(width: 8),
@@ -268,27 +255,13 @@ class _HiveMapToolbarState extends State<HiveMapToolbar> {
             Padding(
               padding: const EdgeInsets.only(right: 16),
               child: Text(
-                'Map: 1200x1200 | Viewing: ${widget.cellSize}x${widget.cellSize}',
+                'Map: 1200x1200',
                 style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildCellSizeButton(int size) {
-    final isSelected = widget.cellSize == size;
-    return ElevatedButton(
-      onPressed: () => widget.onCellSizeChanged(size),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: isSelected ? Colors.blue : Colors.grey[200],
-        foregroundColor: isSelected ? Colors.white : Colors.black87,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        minimumSize: const Size(60, 36),
-      ),
-      child: Text('${size}x$size'),
     );
   }
 

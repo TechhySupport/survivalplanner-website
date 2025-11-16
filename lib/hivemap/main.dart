@@ -2,7 +2,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'grid.dart';
 import 'toolbar.dart';
+import 'top_bar.dart';
 import 'models.dart';
+import 'member_manager.dart';
 
 void main() {
   runApp(const HiveMapApp());
@@ -50,6 +52,19 @@ class _HiveMapHomeState extends State<HiveMapHome> {
   int _centerX = 600; // Current center X coordinate
   int _centerY = 600; // Current center Y coordinate
   DateTime? _lastPlacementTime; // For calculating ping between placements
+  
+  // Map management
+  String _mapName = 'New Map';
+  final List<List<MapObject>> _undoStack = [];
+  final List<List<MapObject>> _redoStack = [];
+  bool _showMembers = false;
+  
+  // Member management - persistent storage
+  final Map<BuildingType, List<Member>> _members = {
+    BuildingType.btMember1: [],
+    BuildingType.btMember2: [],
+    BuildingType.btMember3: [],
+  };
 
   @override
   void initState() {
@@ -62,6 +77,8 @@ class _HiveMapHomeState extends State<HiveMapHome> {
       _addDebugLog('INIT: Map centered at (600, 600)');
     });
   }
+
+
 
   void _initializePermanentBuildings() {
     _objects = [
@@ -198,9 +215,8 @@ class _HiveMapHomeState extends State<HiveMapHome> {
     final now = DateTime.now();
     final timestamp = now.toString().substring(11, 23); // Include milliseconds
     print('[$timestamp] $message');
-    setState(() {
-      _debugLogs.add('[$timestamp] $message');
-    });
+    _debugLogs.add('[$timestamp] $message');
+    // Don't call setState here - debug logs shouldn't trigger UI rebuilds
   }
 
   void _zoomIn() {
@@ -265,6 +281,34 @@ class _HiveMapHomeState extends State<HiveMapHome> {
     }
     _lastPlacementTime = clickTime;
 
+    // Check placement restrictions
+    // Only 1 Bear Trap (any type) can be placed
+    if (obj.type == BuildingType.bearTrap1 ||
+        obj.type == BuildingType.bearTrap2 ||
+        obj.type == BuildingType.bearTrap3) {
+      final existingBearTraps = _objects.where((o) =>
+          o.type == BuildingType.bearTrap1 ||
+          o.type == BuildingType.bearTrap2 ||
+          o.type == BuildingType.bearTrap3).length;
+      if (existingBearTraps >= 1) {
+        _addDebugLog(
+          'BLOCKED: Only 1 Bear Trap can be placed at a time',
+        );
+        return;
+      }
+    }
+
+    // Only 2 HQs can be placed
+    if (obj.type == BuildingType.hq) {
+      final existingHQs = _objects.where((o) => o.type == BuildingType.hq).length;
+      if (existingHQs >= 2) {
+        _addDebugLog(
+          'BLOCKED: Only 2 HQs can be placed',
+        );
+        return;
+      }
+    }
+
     // Check if placement is blocked by any exclusion zone
     // Need to check all tiles that the new building will occupy
     for (final existingObj in _objects) {
@@ -288,9 +332,12 @@ class _HiveMapHomeState extends State<HiveMapHome> {
       }
     }
 
-    setState(() {
-      _objects.add(obj);
-    });
+    // Save to undo stack before placing
+    _saveToUndoStack();
+    
+    // Add object - setState will trigger rebuild but with optimizations
+    _objects.add(obj);
+    setState(() {});
 
     // Measure actual render time by waiting for next frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -336,6 +383,8 @@ class _HiveMapHomeState extends State<HiveMapHome> {
   void _onDeleteObject(MapObject obj) {
     final startTime = DateTime.now();
 
+    _saveToUndoStack();
+    
     setState(() {
       _objects.removeWhere((o) => o.id == obj.id);
     });
@@ -358,24 +407,114 @@ class _HiveMapHomeState extends State<HiveMapHome> {
     return MapObject(id: '', type: type, x: 0, y: 0).displayName;
   }
 
+  void _saveToUndoStack() {
+    _undoStack.add(List<MapObject>.from(_objects));
+    _redoStack.clear(); // Clear redo stack on new action
+    if (_undoStack.length > 50) {
+      _undoStack.removeAt(0); // Limit undo stack size
+    }
+  }
+
+  void _undo() {
+    if (_undoStack.isEmpty) return;
+    _redoStack.add(List<MapObject>.from(_objects));
+    setState(() {
+      _objects = _undoStack.removeLast();
+    });
+    _addDebugLog('UNDO: Reverted to previous state');
+  }
+
+  void _redo() {
+    if (_redoStack.isEmpty) return;
+    _undoStack.add(List<MapObject>.from(_objects));
+    setState(() {
+      _objects = _redoStack.removeLast();
+    });
+    _addDebugLog('REDO: Restored next state');
+  }
+
+  void _resetMap() {
+    _saveToUndoStack();
+    setState(() {
+      _initializePermanentBuildings();
+      _mapName = 'New Map';
+    });
+    _addDebugLog('RESET: Map cleared');
+  }
+
+  void _toggleShowMembers() {
+    showDialog(
+      context: context,
+      builder: (context) => MemberManagerDialog(members: _members),
+    );
+    _addDebugLog('SHOW MEMBERS: Dialog opened');
+  }
+
+  void _saveMap() {
+    _addDebugLog('SAVE: Map saved (not yet implemented)');
+    // TODO: Implement save functionality
+  }
+
+  void _openMap() {
+    _addDebugLog('OPEN: Opening map (not yet implemented)');
+    // TODO: Implement open functionality
+  }
+
+  void _deleteMap() {
+    _addDebugLog('DELETE: Deleting map (not yet implemented)');
+    // TODO: Implement delete functionality
+  }
+
+  void _editMapName() {
+    final controller = TextEditingController(text: _mapName);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Map Name'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(hintText: 'Enter map name'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _mapName = controller.text.isEmpty ? 'New Map' : controller.text;
+              });
+              Navigator.pop(context);
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Column(
         children: [
-          HiveMapToolbar(
-            scale: _scale,
-            onZoomIn: _zoomIn,
-            onZoomOut: _zoomOut,
-            onResetView: _resetView,
-            cellSize: _viewportSize,
-            onCellSizeChanged: _updateViewportSize,
-            selectedBuildingType: _selectedBuildingType,
-            onBuildingTypeChanged: _updateSelectedBuildingType,
-            isSelectMode: _isSelectMode,
-            onToggleSelectMode: _toggleSelectMode,
-            onGoToCoordinate: _goToCoordinate,
-            hoverCoordinates: _hoverCoordinates,
+          HiveMapTopBar(
+            mapName: _mapName,
+            onEditMapName: _editMapName,
+            onUndo: _undo,
+            onRedo: _redo,
+            onReset: _resetMap,
+            onSave: _saveMap,
+            onOpen: _openMap,
+            onDelete: _deleteMap,
+            showMembers: _showMembers,
+            onToggleShowMembers: _toggleShowMembers,
+            canUndo: _undoStack.isNotEmpty,
+            canRedo: _redoStack.isNotEmpty,
+            viewportSize: _viewportSize,
+            onViewportSizeChanged: _updateViewportSize,
           ),
           Expanded(
             child: Container(
@@ -395,6 +534,20 @@ class _HiveMapHomeState extends State<HiveMapHome> {
                 centerY: _centerY,
               ),
             ),
+          ),
+          HiveMapToolbar(
+            scale: _scale,
+            onZoomIn: _zoomIn,
+            onZoomOut: _zoomOut,
+            onResetView: _resetView,
+            cellSize: _viewportSize,
+            onCellSizeChanged: _updateViewportSize,
+            selectedBuildingType: _selectedBuildingType,
+            onBuildingTypeChanged: _updateSelectedBuildingType,
+            isSelectMode: _isSelectMode,
+            onToggleSelectMode: _toggleSelectMode,
+            onGoToCoordinate: _goToCoordinate,
+            hoverCoordinates: _hoverCoordinates,
           ),
         ],
       ),
