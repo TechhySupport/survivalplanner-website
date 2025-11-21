@@ -89,7 +89,7 @@
                     // Early routing bridge for static hosting
                     // 1) Recover deep links from 404.html (?path=...) and forward /map/:slug to the Flutter SPA
                     // 2) Bridge Supabase OAuth callbacks (?code=...) to /web/index.html so the app can finish login
-                    // 3) Alliance invite codes (/VPR1WHI8716) → alliance-invite.html
+                    // 3) Alliance invite codes (/VPR1WHI8716) → alliance-invite.html?code=VPR1WHI8716
                     (function(){
                         try {
                             var sp = new URLSearchParams(window.location.search);
@@ -99,7 +99,7 @@
                             if (recovered) {
                                 var recPath = recovered.substring(1); // Remove leading /
                                 if (recPath && /^[A-Z0-9]{7,15}$/i.test(recPath)) {
-                                    window.location.replace(window.location.origin + '/alliance-invite.html');
+                                    window.location.replace(window.location.origin + '/alliance-invite.html?code=' + recPath);
                                     return;
                                 }
                                 
@@ -118,7 +118,7 @@
                             
                             // Check direct path for alliance invite code
                             if (pathClean && /^[A-Z0-9]{7,15}$/i.test(pathClean)) {
-                                window.location.replace(window.location.origin + '/alliance-invite.html');
+                                window.location.replace(window.location.origin + '/alliance-invite.html?code=' + pathClean);
                                 return;
                             }
                             
