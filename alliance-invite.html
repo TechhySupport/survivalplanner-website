@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join Alliance - Survival Planner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+
+        .alliance-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+            border: 2px solid #e9ecef;
+        }
+
+        .alliance-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            background: #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            color: #667eea;
+        }
+
+        .alliance-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .alliance-info {
+            color: #666;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+
+        .alliance-description {
+            color: #555;
+            font-size: 15px;
+            margin-top: 15px;
+            line-height: 1.5;
+        }
+
+        .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            margin-left: 10px;
+        }
+
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            border: 1px solid #f5c2c7;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .loading {
+            color: #666;
+            font-size: 16px;
+            margin: 30px 0;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            background: #667eea;
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+            margin: 0 5px;
+        }
+
+        .app-links {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .app-links p {
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .store-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .store-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #333;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .store-btn:hover {
+            background: #555;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .btn {
+                width: 100%;
+                margin: 10px 0;
+            }
+
+            .btn-secondary {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🛡️</div>
+        <h1>Join Alliance</h1>
+        <p class="subtitle">Survival Planner</p>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Loading alliance information...</p>
+        </div>
+
+        <div id="error" style="display: none;"></div>
+        <div id="alliance-info" style="display: none;"></div>
+
+        <div class="app-links" id="app-links" style="display: none;">
+            <p>Download Survival Planner to join this alliance:</p>
+            <div class="store-buttons">
+                <a href="https://play.google.com/store/apps/details?id=com.maikl.survivalplanner" class="store-btn">
+                    📱 Google Play
+                </a>
+                <a href="https://apps.apple.com/app/survival-planner/idYOUR_APP_ID" class="store-btn">
+                    🍎 App Store
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get invite code from URL path
+        const path = window.location.pathname;
+        const inviteCode = path.substring(1); // Remove leading slash
+
+        // Your Supabase URL and Anon Key
+        const SUPABASE_URL = 'https://wdjophtkpqtpdkbcwxsq.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indkam9waHRrcHF0cGRrYmN3eHNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjkyNTk5MTYsImV4cCI6MjA0NDgzNTkxNn0.z7xqYX8Nnzg1IfQq0tV9kxKtOZQH7P1sRKVhE_R8Y5U';
+
+        async function loadAllianceInfo() {
+            if (!inviteCode || inviteCode === '') {
+                showError('Invalid invite link. Please check your URL.');
+                return;
+            }
+
+            try {
+                // Call Supabase function to get alliance by invite code
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_alliance_by_invite_code`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify({ p_code: inviteCode })
+                });
+
+                const data = await response.json();
+
+                if (!data || data.length === 0) {
+                    showError('Alliance not found. This invite link may be invalid or expired.');
+                    return;
+                }
+
+                const alliance = data[0];
+                showAllianceInfo(alliance);
+
+            } catch (error) {
+                console.error('Error loading alliance:', error);
+                showError('Failed to load alliance information. Please try again later.');
+            }
+        }
+
+        function showAllianceInfo(alliance) {
+            document.getElementById('loading').style.display = 'none';
+            
+            const allianceDiv = document.getElementById('alliance-info');
+            allianceDiv.style.display = 'block';
+            
+            const avatarHtml = alliance.avatar_url 
+                ? `<img src="${alliance.avatar_url}" alt="${alliance.name}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`
+                : '🛡️';
+
+            allianceDiv.innerHTML = `
+                <div class="alliance-card">
+                    <div class="alliance-avatar">${avatarHtml}</div>
+                    <div class="alliance-name">${alliance.name || 'Unknown Alliance'}</div>
+                    <div class="alliance-info">
+                        ${alliance.state ? `<span class="badge">📍 ${alliance.state}</span>` : ''}
+                        ${alliance.game ? `<span class="badge">🎮 ${alliance.game}</span>` : ''}
+                        ${alliance.member_count ? `<span class="badge">👥 ${alliance.member_count} members</span>` : ''}
+                    </div>
+                    ${alliance.description ? `<div class="alliance-description">${alliance.description}</div>` : ''}
+                </div>
+                <button class="btn" onclick="openInApp()">Join Alliance</button>
+                <button class="btn btn-secondary" onclick="copyInviteCode()">Copy Invite Code</button>
+            `;
+
+            document.getElementById('app-links').style.display = 'block';
+        }
+
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            const errorDiv = document.getElementById('error');
+            errorDiv.className = 'error';
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            document.getElementById('app-links').style.display = 'block';
+        }
+
+        function openInApp() {
+            // Deep link to app with invite code
+            const deepLink = `survivalplanner://alliance/join/${inviteCode}`;
+            
+            // Try to open the app
+            window.location.href = deepLink;
+            
+            // If app doesn't open in 2 seconds, show app store links
+            setTimeout(() => {
+                alert('Please install Survival Planner from the app store to join this alliance.');
+            }, 2000);
+        }
+
+        function copyInviteCode() {
+            navigator.clipboard.writeText(inviteCode).then(() => {
+                alert(`Invite code "${inviteCode}" copied to clipboard!`);
+            }).catch(() => {
+                prompt('Copy this invite code:', inviteCode);
+            });
+        }
+
+        // Load alliance info when page loads
+        loadAllianceInfo();
+    </script>
+</body>
+</html>
