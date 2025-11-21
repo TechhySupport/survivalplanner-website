@@ -242,9 +242,15 @@
     </div>
 
     <script>
-        // Get invite code from URL path
-        const path = window.location.pathname;
-        const inviteCode = path.substring(1); // Remove leading slash
+        // Get invite code from URL parameter or path
+        const params = new URLSearchParams(window.location.search);
+        let inviteCode = params.get('code'); // Try ?code= parameter first
+        
+        if (!inviteCode) {
+            // Fall back to path if no parameter
+            const path = window.location.pathname;
+            inviteCode = path.substring(1); // Remove leading slash
+        }
 
         // Your Supabase URL and Anon Key
         const SUPABASE_URL = 'https://wdjophtkpqtpdkbcwxsq.supabase.co';
