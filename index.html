@@ -92,19 +92,18 @@
                     // 3) Alliance invite codes (/VPR1WHI8716) → alliance-invite.html
                     (function(){
                         try {
-                            var path = window.location.pathname;
-                            var pathClean = path.substring(1); // Remove leading /
-                            
-                            // Check for alliance invite code (7-15 uppercase alphanumeric chars)
-                            if (pathClean && /^[A-Z0-9]{7,15}$/i.test(pathClean)) {
-                                window.location.replace(window.location.origin + '/alliance-invite.html');
-                                return;
-                            }
-                            
                             var sp = new URLSearchParams(window.location.search);
                             var recovered = sp.get('path'); // set by 404.html
+                            
+                            // Check recovered path for alliance invite code first
                             if (recovered) {
-                                // Ensure recovered is absolute-ish for parsing
+                                var recPath = recovered.substring(1); // Remove leading /
+                                if (recPath && /^[A-Z0-9]{7,15}$/i.test(recPath)) {
+                                    window.location.replace(window.location.origin + '/alliance-invite.html');
+                                    return;
+                                }
+                                
+                                // Handle map recovery
                                 var recUrl = new URL(recovered, window.location.origin);
                                 var recPathQuery = recUrl.pathname + recUrl.search;
                                 if (recUrl.pathname.indexOf('/map/') === 0) {
@@ -113,6 +112,16 @@
                                     return;
                                 }
                             }
+                            
+                            var path = window.location.pathname;
+                            var pathClean = path.substring(1); // Remove leading /
+                            
+                            // Check direct path for alliance invite code
+                            if (pathClean && /^[A-Z0-9]{7,15}$/i.test(pathClean)) {
+                                window.location.replace(window.location.origin + '/alliance-invite.html');
+                                return;
+                            }
+                            
                             if (path.indexOf('/map/') === 0) {
                                 // Direct access to /map/:slug on root — forward into Flutter with hash routing
                                 var dest2 = window.location.origin + '/web/index.html#' + path + window.location.search;
