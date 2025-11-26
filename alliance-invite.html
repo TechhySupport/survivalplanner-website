@@ -231,10 +231,10 @@
         <div class="app-links" id="app-links" style="display: none;">
             <p>Download Survival Planner to join this alliance:</p>
             <div class="store-buttons">
-                <a href="https://play.google.com/store/apps/details?id=com.maikl.survivalplanner" class="store-btn">
+                <a href="javascript:void(0)" onclick="openInApp()" class="store-btn">
                     📱 Google Play
                 </a>
-                <a href="https://apps.apple.com/app/survival-planner/idYOUR_APP_ID" class="store-btn">
+                <a href="javascript:void(0)" onclick="openInApp()" class="store-btn">
                     🍎 App Store
                 </a>
             </div>
@@ -328,16 +328,44 @@
         }
 
         function openInApp() {
+            // Detect if user is on iOS or Android
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            const isAndroid = /Android/.test(navigator.userAgent);
+            
             // Deep link to app with invite code
             const deepLink = `survivalplanner://alliance/join/${inviteCode}`;
+            
+            // Track if page loses focus (means app opened)
+            let appOpened = false;
+            const startTime = Date.now();
+            
+            // Listen for page visibility change
+            const visibilityChange = () => {
+                if (document.hidden) {
+                    appOpened = true;
+                }
+            };
+            
+            document.addEventListener('visibilitychange', visibilityChange);
             
             // Try to open the app
             window.location.href = deepLink;
             
-            // If app doesn't open in 2 seconds, show app store links
+            // Check after delay if app didn't open
             setTimeout(() => {
-                alert('Please install Survival Planner from the app store to join this alliance.');
-            }, 2000);
+                document.removeEventListener('visibilitychange', visibilityChange);
+                
+                // If page is still visible and very little time passed, app probably didn't open
+                if (!appOpened && !document.hidden) {
+                    if (isIOS) {
+                        window.location.href = 'https://apps.apple.com/us/app/survival-planner/id6749657629';
+                    } else if (isAndroid) {
+                        window.location.href = 'https://play.google.com/store/apps/details?id=com.maikl.survivalplanner';
+                    } else {
+                        alert('Please install Survival Planner from the App Store or Google Play to join this alliance.');
+                    }
+                }
+            }, 2500);
         }
 
         function copyInviteCode() {
