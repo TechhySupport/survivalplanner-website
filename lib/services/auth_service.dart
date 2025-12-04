@@ -55,12 +55,24 @@ class AuthService {
   static Stream<AuthState> get authStateChanges =>
       _client.auth.onAuthStateChange;
 
-  // Reset password
-  static Future<void> resetPassword(String email) async {
+  // Reset password - sends email with link to reset page
+  static Future<void> resetPassword(String email, {String? redirectUrl}) async {
     try {
-      await _client.auth.resetPasswordForEmail(email);
+      await _client.auth.resetPasswordForEmail(
+        email,
+        redirectTo: redirectUrl ?? 'https://yourdomain.com/reset-password',
+      );
     } catch (e) {
       throw Exception('Password reset failed: $e');
+    }
+  }
+
+  // Update password (called after user clicks reset link)
+  static Future<void> updatePassword(String newPassword) async {
+    try {
+      await _client.auth.updateUser(UserAttributes(password: newPassword));
+    } catch (e) {
+      throw Exception('Password update failed: $e');
     }
   }
 }

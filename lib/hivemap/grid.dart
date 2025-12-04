@@ -65,10 +65,10 @@ class IsometricGridPainter extends CustomPainter {
     // ONLY draw grid lines within viewport range!
     // Calculate the visible range based on center coordinate and viewport size
     final halfViewport = viewportSize ~/ 2;
-    final minX = (this.centerX - halfViewport).clamp(0, maxCoord);
-    final maxX = (this.centerX + halfViewport).clamp(0, maxCoord);
-    final minY = (this.centerY - halfViewport).clamp(0, maxCoord);
-    final maxY = (this.centerY + halfViewport).clamp(0, maxCoord);
+    final minX = (centerX - halfViewport).clamp(0, maxCoord);
+    final maxX = (centerX + halfViewport).clamp(0, maxCoord);
+    final minY = (centerY - halfViewport).clamp(0, maxCoord);
+    final maxY = (centerY + halfViewport).clamp(0, maxCoord);
 
     // Draw vertical lines (constant x) - ONLY in visible range
     for (int x = minX; x <= maxX; x += gridSpacing) {

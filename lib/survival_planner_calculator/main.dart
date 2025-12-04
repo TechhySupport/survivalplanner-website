@@ -43,9 +43,9 @@ Future<void> main() async {
   // Firebase removed for web-safe build
   await PurchaseService.init();
   // Load saved locale, default to English
-  final _prefs = await SharedPreferences.getInstance();
-  final _code = _prefs.getString('app_locale') ?? 'en';
-  appLocale.value = Locale(_code);
+  final prefs = await SharedPreferences.getInstance();
+  final code = prefs.getString('app_locale') ?? 'en';
+  appLocale.value = Locale(code);
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   // Ads initialization removed for web-safe build
 
