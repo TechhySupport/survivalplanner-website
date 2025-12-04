@@ -157,6 +157,41 @@
     <meta name="screenshotsNote" content="Replace placeholder screenshot with real app images.">
     <meta name="brandingNote" content="Favicon/logo taken from web/assets; update as needed.">
   
+    <!-- Redirect recovery tokens to reset-password.html -->
+    <script>
+        // Check if this page was loaded with password recovery tokens
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const pathParam = urlParams.get('path');
+            const hash = window.location.hash;
+            
+            // Check if we have recovery tokens in the URL
+            if ((pathParam && pathParam.includes('access_token')) || 
+                (hash && hash.includes('type=recovery'))) {
+                
+                // Extract the full hash/token string
+                let tokenString = '';
+                
+                if (pathParam && pathParam.includes('access_token')) {
+                    // Tokens are in the path parameter (encoded)
+                    const decoded = decodeURIComponent(pathParam);
+                    // Extract everything after the # symbol
+                    const hashIndex = decoded.indexOf('#');
+                    if (hashIndex !== -1) {
+                        tokenString = decoded.substring(hashIndex);
+                    }
+                } else if (hash) {
+                    // Tokens are in the hash
+                    tokenString = hash;
+                }
+                
+                if (tokenString) {
+                    // Redirect to reset-password.html with the tokens
+                    window.location.href = '/reset-password.html' + tokenString;
+                }
+            }
+        })();
+    </script>
 </head>
 <body>
     
